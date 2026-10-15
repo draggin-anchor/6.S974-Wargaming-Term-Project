@@ -1,0 +1,49 @@
+# OS junk
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Secrets and local config
+.env
+.env.*
+*.pem
+*.key
+secrets/
+credentials*.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Julia
+Manifest.toml
+
+# Node
+node_modules/
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.bbl
+*.blg
+
+# Large or generated outputs
+build/
+dist/
+results/
+*.zip
+*.mp4
