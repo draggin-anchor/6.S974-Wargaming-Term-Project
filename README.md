@@ -17,5 +17,6 @@ See the proposal in `deliverables/` for the full model and literature.
 | Path | Contents |
 | --- | --- |
 | `deliverables/` | Submitted project deliverables (PDF) |
+| `course-materials/` | Instructor handouts: wargame scope sheet and deliverable instructions |
 
 Code, notes and later deliverables will be added as the project develops.
