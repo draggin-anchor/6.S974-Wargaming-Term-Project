@@ -1572,7 +1572,7 @@ def launch_gui():
             af = tk.Frame(sc)
             af.grid(row=row, column=1, columnspan=3, sticky='w')
             for k, a in enumerate(ATTACKS):
-                ttk.Checkbutton(af, text=a, variable=self.v_attacks[a]).grid(row=k // 2, column=k % 2, sticky='w', padx=2)
+                ttk.Checkbutton(af, text=a.capitalize(), variable=self.v_attacks[a]).grid(row=k // 2, column=k % 2, sticky='w', padx=2)
             row += 1
             ttk.Label(sc, text='Random seed').grid(row=row, column=0, sticky='w', padx=4, pady=2)
             ttk.Entry(sc, textvariable=self.v_seed, width=7).grid(row=row, column=1, sticky='w')

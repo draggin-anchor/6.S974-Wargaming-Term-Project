@@ -68,7 +68,7 @@ bullets(s, [
   [{ text: "Players. ", options: { bold: true, color: C.accent1 } }, { text: "Blue: 10 U.S. destroyers. Red: 8 navy ships + 6 coast guard / militia hulls." }],
   [{ text: "Each period (2 days). ", options: { bold: true } }, { text: "Each side chooses where its ships go and whether to patrol (P) or assert (A: shadow, block, water cannon)." }],
   [{ text: "Control ", options: { bold: true } }, { text: "of a zone follows the local force ratio, so each side's best move depends on the other's." }],
-  [{ text: "Incidents ", options: { bold: true, color: C.accent2 } }, { text: "happen when both are present and someone asserts. Incidents raise an escalation level; at the top is war, which costs both sides." }],
+  [{ text: "Incidents ", options: { bold: true, color: C.accent2 } }, { text: "can happen when both sides are present, and are likelier if someone asserts. Incidents raise an escalation level; at the top is war, which costs both sides." }],
   [{ text: "Fog. ", options: { bold: true } }, { text: "Each side only partly sees the other's ships. Weather (Nature) can close zones." }],
 ], { x: 6.0, y: 1.45, w: 6.7, h: 4.6, fontSize: 18 });
 s.addNotes("(~60 s) Squares are home ports, circles are the eight contested zones, grouped North, Center, South. Dashed lines are the extra Philippine port, one of our redesigns. Three things make this a game rather than a single optimization: control is relative, so my best move depends on yours; escalation risk is shared, because incidents need both sides present and war costs both; and neither side sees everything.");

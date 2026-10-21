@@ -6,11 +6,13 @@ Term project for MIT 6.S974 / 2.S988 / 1.S980, *Games, Learning, and Security* (
 
 ## Project
 
-A simulated game of maritime control in the East and South China Seas, played between US and
-Chinese naval forces competing for control of contested waters (around Taiwan and the First
-Island Chain) without escalating to war. Players allocate forces to areas and choose follow-on
-actions (presence, surveillance, attack, retreat) under food, fuel and maintenance constraints.
-See the proposal in `deliverables/` for the full model and literature.
+A simulated game of gray-zone maritime control in the East and South China Seas. Blue (US Navy
+destroyers) and Red (Chinese Navy and coast guard) move ships between eight contested zones on a
+network every two days and choose whether to patrol or assert. Control of a zone follows the local
+force ratio; incidents between ships raise an escalation level whose top is war, which costs both
+sides. Each side's allocation is solved as a mixed-integer program with an escalation-risk budget,
+and weather (Nature) tests how robust each strategy and design is. The Workshop 1 report in
+`deliverables/` has the full model, literature and results.
 
 ## Layout
 
