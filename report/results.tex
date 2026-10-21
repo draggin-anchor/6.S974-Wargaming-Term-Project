@@ -1,12 +1,12 @@
 \S4.1--4.2 are analytical (template game); the rest use 200 seeds per configuration, the same for every policy.
 Unless stated, Red plays MIP-BR with $\varepsilon_\Rd=0.15$ in nominal weather.
 
-\subsection{Small example: a game of chicken, and sustainable restraint}
+\subsection{Small example: patrol or assert, and sustainable restraint}
 Fix the force splits that survive dominance (\S4.2): Blue center-heavy, Red south-heavy. Each side then only
 chooses P or A. The resulting $2\times2$ sub-matrix of $\Gamma$, normalized so (P,P) $=(0,0)$, has
 (P,A) $=(-9.61,\,1.20)$, (A,P) $=(0.28,\,-10.45)$ and (A,A) $=(-11.41,\,-11.33)$ (Blue, Red).
 Asserting against a patroller pays a little ($G_\B=0.28$, $G_\Rd=1.20$), but mutual assertion costs more than
-patrolling alone, so $BR_i(\Pt)=\As$ and $BR_i(\As)=\Pt$: the anti-coordination (chicken) structure of the
+patrolling alone, so $BR_i(\Pt)=\As$ and $BR_i(\As)=\Pt$: the same structure as the
 shared-compute example (Lecture 3). There are two pure NE, (A,P) and (P,A), and a mixed NE (Blue asserts w.p.\
 $0.58$, Red $0.13$) with mutual assertion w.p.\ $0.08$. The welfare-maximizing correlated equilibrium (CE LP)
 puts $0.40$ on (P,P), $0.54$ on (A,P), $0.06$ on (P,A) and \emph{zero} on (A,A): a mediator (e.g.\ a hotline)
@@ -19,11 +19,11 @@ $\delta=0.98$, \textbf{mutual restraint is a subgame perfect equilibrium}, altho
 cannot see this yet.
 
 \subsection{Template game: dominance, equilibria and the effect of the escalation cost}
-IESDS reduces $\Gamma$ from $14\times14$ to $2\times4$: Blue keeps only the center-heavy split (N20/C60/S20),
+IESDS reduces $\Gamma$ from $14\times14$ to $2\times4$: Blue keeps only the center-heavy split (20\% North, 60\% Center, 20\% South),
 Red the south- or center/south-heavy splits. There are two pure NE: (Blue C-heavy assert, Red S-heavy patrol),
 payoffs $(0.39,-9.27)$, and (Blue C-heavy patrol, Red C/S assert), $(-14.44,2.71)$; the \emph{equilibrium} policy
 plays the first (higher total payoff; this selection is an assumption). Without the escalation cost, the zero-sum
-maximin LP has a pure saddle point where \emph{both} sides concentrate on the Center and assert (value $-2.26$):
+maximin LP has a pure equilibrium where \emph{both} sides concentrate on the Center and assert (value $-2.26$):
 the shared incident cost is what makes at most one side assert.
 
 \subsection{RQ1: control versus war risk, and the risk-budget game}

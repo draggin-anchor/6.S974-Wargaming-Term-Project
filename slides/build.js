@@ -58,7 +58,7 @@ pres.addSection({ title: "Introduction" });
 let s = pres.addSlide({ masterName: "DARK", sectionTitle: "Introduction" });
 s.addText("Gray-Zone Maritime Control in the First Island Chain", { placeholder: "title" });
 s.addText("A networked escalation game  |  Workshop 1\nSean Bowman, Tate Murphy, Matthew Newell", { placeholder: "body" });
-s.addNotes("We model day-to-day U.S.-China competition for control of waters inside the First Island Chain, below the threshold of war, as a game on a network. Today: the model, the prototype, and first results on our three research questions.");
+s.addNotes("(~30 s) We study day-to-day U.S.-China competition for control of the waters inside the First Island Chain, below the threshold of war. We built it as a game on a network. Today: the model, the prototype, and first results on three research questions.");
 
 // ---------------------------------------------------------------- 2 problem
 s = content("Introduction", "The problem: control without war");
@@ -71,7 +71,7 @@ bullets(s, [
   [{ text: "Incidents ", options: { bold: true, color: C.accent2 } }, { text: "happen when both are present and someone asserts. Incidents raise an escalation level; at the top is war, which costs both sides." }],
   [{ text: "Fog. ", options: { bold: true } }, { text: "Each side only partly sees the other's ships. Weather (Nature) can close zones." }],
 ], { x: 6.0, y: 1.45, w: 6.7, h: 4.6, fontSize: 18 });
-s.addNotes("Squares are home ports, circles are contested zones. The three features that make this a game rather than an optimization: control is relative, escalation risk is shared, and neither side sees everything.");
+s.addNotes("(~60 s) Squares are home ports, circles are the eight contested zones, grouped North, Center, South. Dashed lines are the extra Philippine port, one of our redesigns. Three things make this a game rather than a single optimization: control is relative, so my best move depends on yours; escalation risk is shared, because incidents need both sides present and war costs both; and neither side sees everything.");
 
 // ---------------------------------------------------------------- 3 RQs + feedback
 s = content("Introduction", "Research questions and what changed since the proposal");
@@ -96,7 +96,7 @@ s.addTable([
   ["Propose missing values", "All values listed and marked as assumptions"],
   ["Prof. Sapsis: weather", "Weather scenarios as Nature's move; expected and worst-case payoff"],
 ], { objectName: "fbtable", x: 7.0, y: 1.45, w: 5.7, colW: [2.0, 3.7], fontSize: 12, color: C.text1, border: { type: "solid", pt: 0.5, color: HEX.accent6 }, valign: "middle", rowH: 0.62 });
-s.addNotes("Each line of instructor feedback maps to a concrete change. The biggest: the model is now fully formal, and the strategy types from the proposal are now values of a risk budget inside a MIP.");
+s.addNotes("(~60 s) Three questions. RQ1: what does accepting more escalation risk buy, and what risk levels do both sides choose? RQ2: does game-theoretic play beat simple rules? RQ3, from Prof. Sapsis's comment: does the best strategy stay best when weather turns bad? The table maps each piece of Deliverable 1 feedback to what we changed. The main one: the model is now fully formal, and the proposal's strategy types are a single risk-budget number inside a MIP.");
 
 // ---------------------------------------------------------------- 4 model
 pres.addSection({ title: "Model" });
@@ -123,7 +123,7 @@ T(s, [
   { text: "War hurts both sides, so the game is not zero-sum.", options: { fontSize: 13, color: C.accent5 } },
 ], { x: 7.15, y: 1.55, w: 5.3, h: 4.3, fontSize: 14, valign: "top" });
 takeaway(s, "Every rule is explicit, so the same game can be played thousands of times by different strategies.");
-s.addNotes("The timeline is the sequence of play. The three formulas are all the dynamics: control follows the force ratio with smoothing, incidents need contact and grow with assertion and with escalation, and the war penalty is shared.");
+s.addNotes("(~70 s) Walk the timeline top to bottom: this is one two-day turn. Nature moves first with the weather, then both sides move at the same time without seeing each other's full fleet. The box holds all the dynamics. Control moves 30% of the way toward the local force ratio each turn. Incidents need both sides present, and are likelier when someone asserts and when tensions are already high. Payoff is value of zones held minus costs; war costs both sides 200, so the game is not zero-sum. If asked: every number is our assumption, listed in Table 1 of the report.");
 
 // ---------------------------------------------------------------- 5 decisions
 s = content("Model", "How the players decide");
@@ -141,11 +141,11 @@ cards.forEach((c, i) => {
   T(s, c[3], { x: x + 0.2, y: 4.95, w: 3.5, h: 0.9, fontSize: 13, italic: true, color: C.accent5, valign: "top" });
 });
 takeaway(s, "The proposal's strategy types are now one number, ε, inside an optimization the course covered (Lecture 2).");
-s.addNotes("The MIP answers the instructor's comment that Q1 is a feasible region. The template game is small enough to solve exactly with the Lecture 3-4 tools.");
+s.addNotes("(~60 s) Two ways to decide. Left: each turn a player solves a MIP, the Lecture 2 tool, to pick moves, with a cap on expected incidents, epsilon. This answers the feedback that Q1 is a feasible region. Middle: for equilibrium analysis we shrink each side to 14 templates and solve the 14-by-14 game exactly with the Lecture 3-4 tools. Right: the six policies we compare. All of them see the same random draws.");
 
 // ---------------------------------------------------------------- 6 chicken
 pres.addSection({ title: "Results" });
-s = content("Results", "Small example: patrol or assert is a game of chicken");
+s = content("Results", "Small example: when does it pay to assert?");
 n++;
 const hdr = (t) => ({ text: t, options: { bold: true, color: C.background1, fill: { color: C.text2 }, align: "center" } });
 s.addTable([
@@ -153,14 +153,14 @@ s.addTable([
   [{ text: "Blue patrols", options: { bold: true } }, { text: "0 , 0", options: { align: "center" } }, { text: "−9.6 , +1.2", options: { align: "center" } }],
   [{ text: "Blue asserts", options: { bold: true } }, { text: "+0.3 , −10.5", options: { align: "center" } }, { text: "−11.4 , −11.3", options: { align: "center", color: C.accent2, bold: true } }],
 ], { objectName: "chicken", x: 0.6, y: 1.5, w: 6.0, colW: [1.8, 2.1, 2.1], rowH: 0.75, fontSize: 18, border: { type: "solid", pt: 0.75, color: HEX.accent6 }, valign: "middle" });
-T(s, "Payoffs (Blue, Red) in one zone, relative to both patrolling", { x: 0.6, y: 3.85, w: 6.0, h: 0.35, fontSize: 12, italic: true, color: C.accent5 });
+T(s, "Payoffs (Blue, Red) with force splits fixed, relative to both patrolling", { x: 0.6, y: 3.85, w: 6.0, h: 0.35, fontSize: 12, italic: true, color: C.accent5 });
 bullets(s, [
   [{ text: "Best reply: ", options: { bold: true } }, { text: "assert if the other patrols, patrol if the other asserts. Two pure equilibria, plus a mixed one with mutual assertion 8% of the time." }],
   [{ text: "A mediator helps: ", options: { bold: true } }, { text: "the best correlated equilibrium never recommends (assert, assert). A hotline can play that role." }],
   [{ text: "Repetition helps: ", options: { bold: true } }, { text: "with grim trigger, mutual patrolling is a subgame perfect equilibrium for any discount factor above 0.18. Ours is 0.98." }],
 ], { x: 7.0, y: 1.5, w: 5.7, h: 4.5, fontSize: 17 });
 takeaway(s, "Restraint is not stable in a one-shot encounter, but it can be sustained by repeated play or a coordination device.");
-s.addNotes("Numbers come from the template game with the dominance-surviving force splits. Lectures 3-6: chicken, correlated equilibrium LP, grim trigger with the one-stage deviation principle.");
+s.addNotes("(~70 s) A small example from our own game. Fix where ships go; each side only chooses patrol or assert. Read the table: asserting against a patroller pays a little, but if both assert, both lose more than 11. So the best reply is to do the opposite of the other side, like the shared-compute example in Lecture 3. Two fixes: a correlated equilibrium, which is what a mediator or hotline can implement, never recommends both asserting; and in the repeated game, grim trigger makes mutual patrolling a subgame perfect equilibrium whenever the discount factor is above 0.18. Ours is 0.98.");
 
 // ---------------------------------------------------------------- 7 prototype
 s = content("Results", "The prototype: watch a game play out");
@@ -172,7 +172,7 @@ bullets(s, [
   [{ text: "Orange ring ", options: { bold: true, color: C.accent3 } }, { text: "= incident. Shaded region = rough sea or storm." }],
   [{ text: "Run many games ", options: { bold: true } }, { text: "replays the same setup over many random seeds and reports averages." }],
 ], { x: 8.1, y: 1.45, w: 4.6, h: 4.7, fontSize: 16 });
-s.addNotes("One Python file runs the GUI, batch runs and a per-period trace. A second script regenerates every number in the report. Rule of thumb (Blue) vs quick best response (Red), normal season, turn 12, a storm over the North.");
+s.addNotes("(~60 s, or a 60 s live demo) This is the prototype. Pick a plan for each side, a design and the weather, then Step or Play. Zone color is who controls it. Letters count ships. Thick outlines mean asserting, an orange ring is an incident, shading is bad weather. Bottom left is the escalation ladder; level 5 is war. 'Run many games' gives averages. The screenshot is turn 12 with a storm over the North. The same file runs batch experiments; a second script reproduces every number in the report.");
 
 // ---------------------------------------------------------------- 8 RQ1
 s = content("Results", "RQ1: more risk buys control, up to a point");
@@ -188,7 +188,7 @@ s.addTable([
 T(s, "Risk-budget game: payoffs (Blue, Red) and war rate. Red bold = the only equilibrium.", { x: 6.9, y: 4.85, w: 5.8, h: 0.5, fontSize: 12, italic: true, color: C.accent5 });
 T(s, "Raising Blue's budget from 0.02 to 0.15 lifts its control a lot; beyond 0.25 it barely moves.", { x: 0.6, y: 5.55, w: 6.0, h: 0.5, fontSize: 13, color: C.accent5 });
 takeaway(s, "Both sides choose aggressive, giving the highest war rate (34%): a prisoner's dilemma.");
-s.addNotes("Left: Blue relaxes its risk budget while Red stays at 0.15. Right: both pick a budget; aggressive is a best response to everything for both, so the equilibrium is worst for the pair.");
+s.addNotes("(~60 s) Left: Blue loosens its risk budget while Red stays moderate. Control rises fast up to about 0.15, then flattens, while war risk keeps rising. Right: both sides choose a budget. Aggressive is the best reply to anything, for both, so the only equilibrium is aggressive-aggressive, with the highest war rate, 34%. That is a prisoner's dilemma, Lecture 3. Restraint has to come from repetition or coordination, as in the previous example.");
 
 // ---------------------------------------------------------------- 9 RQ2
 s = content("Results", "RQ2: the Nash equilibrium plan is the safest bet against any Red");
@@ -207,7 +207,7 @@ bullets(s, [
   [{ text: "Safety-first plan ", options: { bold: true } }, { text: "is the most cautious (war ≤ 8%) but gives up the most control." }],
   [{ text: "Quick vs MIP: ", options: { bold: true } }, { text: "the quick heuristic matches the MIP 67% of the time but breaks the risk budget 14% of the time." }],
 ], { x: 8.1, y: 1.45, w: 4.6, h: 4.7, fontSize: 16 });
-s.addNotes("Each Blue policy plays against three Red policies (rule-based, MIP best response, equilibrium); the bar is Blue's lowest payoff of the three. 200 games each, standard errors 1 to 7.");
+s.addNotes("(~60 s) Each Blue policy plays three Red policies, 200 games each; the bar is Blue's payoff against its worst opponent. The Nash equilibrium plan has the best worst case, and half the war rate of the MIP best response. Best responses do well against weak opponents but escalate. The safety-first plan is cautious but gives up control. Differences under about 20 points are within noise.");
 
 // ---------------------------------------------------------------- 10 RQ3
 s = content("Results", "RQ3: the best strategy holds up in bad weather");
@@ -227,7 +227,7 @@ s.addChart(pres.charts.BAR, [
 });
 T(s, "War rate (normal weather): D0 20%, D1 28%, D2 23%, D3 5%. The hotline was given no cost yet.", { x: 6.8, y: 5.0, w: 5.9, h: 0.4, fontSize: 13, color: C.accent5 });
 takeaway(s, "The plan that is best on average is also best in the worst weather. The crisis hotline is the best design and cuts war about 4×.");
-s.addNotes("Robustness in the Lecture 1 sense: expected payoff over the weather scenarios and worst-case payoff. The hotline also raises Red's payoff, because fewer wars help both sides: it is a joint gain, not a Blue advantage.");
+s.addNotes("(~70 s) Robustness in the Lecture 1 sense: expected payoff over the four weather scenarios, and worst case. Left: the policy ranking does not change across weather; the top two plans stay on top. Bad weather slightly helps Blue here, because rough seas weaken Red's coast-guard hulls. Right: of the three redesigns, the crisis hotline is best on average and in the worst case, and cuts war about four times. Caveat: we gave it no cost yet, and it also helps Red, so it is a joint gain.");
 
 // ---------------------------------------------------------------- 11 caveats
 s = content("Results", "What the evidence does and does not show");
@@ -250,7 +250,7 @@ col(6.8, "Not yet shown", C.accent2, [
   "The hotline has no cost yet, so part of its win is built in",
   "Differences under about 20 payoff points are ties",
 ]);
-s.addNotes("Be direct about limits. The war rate depends strongly on the hazard, de-escalation and war-penalty values; a sensitivity sweep is planned.");
+s.addNotes("(~45 s) Be direct about limits. Left is what the runs support. Right is what they do not: values are assumptions, policies look one turn ahead, the war rate depends heavily on a few parameters, and the hotline result is partly built in. A sensitivity sweep is the first item for Workshop 2.");
 
 // ---------------------------------------------------------------- 12 plan
 pres.addSection({ title: "Next steps" });
@@ -270,7 +270,7 @@ plan.forEach((p, i) => {
   T(s, p[2], { x, y: 3.05, w: 2.8, h: 2.8, fontSize: 15, valign: "top" });
 });
 takeaway(s, "Each step follows the remaining course modules: learning, attacks and defenses, resilient design.");
-s.addNotes("About 40 configurations of 200 games each. Every new piece is evaluated against the Workshop 1 policies.");
+s.addNotes("(~45 s) Workshop 2 follows the remaining course modules. First, Bayesian beliefs and the three Red attacks already coded. Then learning agents, once taught: does a learning Red exploit predictable Blue play? Then redesigns under attack and long typhoons, with a cost for the hotline. Final report December 8. Thank you; happy to take questions.");
 
 (async () => {
   const out = __dirname + "/../deliverables/02-workshop1-slides.pptx";

@@ -1406,6 +1406,9 @@ def make_policy(name, player, game):
 # 10.  GUI (tkinter; imported lazily so headless modes never need it)
 # ============================================================================
 
+REGION_NAMES = {'N': 'North', 'C': 'Center', 'S': 'South'}
+
+
 def plain_events(texts):
     """Rewrite one turn's engine events in plain words for the GUI log.
 
@@ -1417,6 +1420,9 @@ def plain_events(texts):
     for x in texts:
         if ' forced return ' in x:
             home[x[0]] += 1
+        elif x.startswith('Storm closes region'):
+            r = x.split()[3]
+            out.append(x.replace(f'region {r}', f"the {REGION_NAMES.get(r, r)}").replace(' periods', ' turns'))
         elif x.startswith('INCIDENT'):
             out.append(x.replace('INCIDENT at', 'Incident at').replace('ell ->', 'escalation rises to'))
         else:
@@ -1438,12 +1444,12 @@ def launch_gui():
     # (label anchor, dx, dy, ships anchor, dx, dy) relative to the node center
     LAYOUT = {
         'YOK': ('n', 0, 18, 'n', 0, 31), 'GUA': ('e', -18, -8, 'e', -18, 8),
-        'NBO': ('s', 0, -22, 'n', 0, 18), 'SAN': ('n', 0, 18, 's', 0, -18),
+        'NBO': ('s', 0, -22, 'n', 0, 18), 'SAN': ('s', 0, -16, 'e', -16, 0),
         'PHL': ('w', 18, 10, 'w', 18, 22),
         'SEN': ('s', 0, -20, 'e', -18, 2), 'MIY': ('w', 18, -8, 'w', 18, 7),
         'TWN': ('e', -18, -6, 'e', -18, 8), 'EOT': ('w', 18, 4, 'w', 18, 18),
         'LUZ': ('e', -18, 4, 'n', 0, 18), 'SCB': ('w', 18, -6, 'e', -18, 8),
-        'PAR': ('s', 0, -20, 'e', -18, 8), 'STS': ('s', 0, -20, 'w', 18, 4),
+        'PAR': ('n', 0, 18, 'w', 18, 6), 'STS': ('s', 0, -20, 'w', 18, 4),
     }
     LON0, LON1, LAT0, LAT1 = 108.0, 146.0, 8.0, 36.0
     BLUE, RED, CCG_COL = '#1f4e9c', '#b22222', '#d2691e'
@@ -1864,8 +1870,8 @@ def launch_gui():
             cv.create_text(x0 - 4, y1, text='-1', anchor='e', font=('TkDefaultFont', 8))
             cv.create_text(x0, y1 + 4, text='turn 0', anchor='n', font=('TkDefaultFont', 8))
             cv.create_text(x1, y1 + 4, text=f'turn {T}', anchor='ne', font=('TkDefaultFont', 8))
-            cv.create_text(x0 + 6, y0 + 2, anchor='nw', fill=BLUE, font=('TkDefaultFont', 8, 'bold'), text='Blue control share')
-            cv.create_text(x0 + 130, y0 + 2, anchor='nw', fill='#ff8c00', font=('TkDefaultFont', 8, 'bold'),
+            cv.create_text(x0 + 6, y0 + 2, anchor='nw', fill=BLUE, font=('TkDefaultFont', 8, 'bold'), text='Blue control share (-1 to +1)')
+            cv.create_text(x0 + 190, y0 + 2, anchor='nw', fill='#ff8c00', font=('TkDefaultFont', 8, 'bold'),
                            text='Escalation (bottom = 0, top = war); dots = incidents')
 
             def X(t):
