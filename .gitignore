@@ -45,5 +45,6 @@ node_modules/
 build/
 dist/
 results/
+!prototype/results/
 *.zip
 *.mp4

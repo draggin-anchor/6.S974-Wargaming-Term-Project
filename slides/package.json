@@ -1,0 +1,7 @@
+{
+  "name": "workshop1-slides",
+  "private": true,
+  "description": "Builds deliverables/02-workshop1-slides.pptx",
+  "scripts": { "build": "node build.js" },
+  "dependencies": { "pptxgenjs": "^3.12.0", "jszip": "^3.10.1" }
+}

@@ -1,0 +1,280 @@
+const pptxgen = require("pptxgenjs");
+const { applyTheme } = require("./theme.js");
+const FIG = process.env.FIG || (__dirname + "/../prototype/results/figures/");
+
+const THEME = {
+  name: "Gray Zone", headFontFace: "Cambria", bodyFontFace: "Calibri",
+  colors: {
+    dk1: "1B2430", lt1: "FFFFFF", dk2: "0B2545", lt2: "EEF3F8",
+    accent1: "1F4E9C", accent2: "B23A48", accent3: "E8A33D", accent4: "13807A",
+    accent5: "6B7A8F", accent6: "8DA9C4", hlink: "1F4E9C", folHlink: "6B7A8F",
+  },
+};
+const HEX = THEME.colors;
+
+const pres = new pptxgen();
+pres.layout = "LAYOUT_WIDE"; // 13.33 x 7.5
+pres.title = "Gray-Zone Maritime Control: Workshop 1";
+pres.author = "Sean Bowman, Tate Murphy, Matthew Newell";
+pres.theme = { headFontFace: THEME.headFontFace, bodyFontFace: THEME.bodyFontFace };
+const C = pres.SchemeColor;
+
+pres.defineSlideMaster({
+  title: "DARK", background: { color: C.text2 },
+  objects: [
+    { placeholder: { options: { name: "title", type: "title", x: 0.8, y: 2.3, w: 11.7, h: 1.6, fontSize: 40, bold: true, color: C.background1, valign: "bottom" }, text: "" } },
+    { placeholder: { options: { name: "body", type: "body", x: 0.8, y: 4.05, w: 11.7, h: 1.6, fontSize: 18, color: C.accent6, valign: "top" }, text: "" } },
+  ],
+});
+pres.defineSlideMaster({
+  title: "CONTENT", background: { color: C.background1 },
+  objects: [
+    { placeholder: { options: { name: "title", type: "title", x: 0.6, y: 0.35, w: 12.1, h: 0.8, fontSize: 28, bold: true, color: C.text2, valign: "middle" }, text: "" } },
+  ],
+  slideNumber: { x: 12.4, y: 7.0, w: 0.6, h: 0.3, fontSize: 10, color: C.accent5 },
+});
+
+let n = 0;
+function T(slide, text, opt) { n++; slide.addText(text, Object.assign({ isTextBox: true, objectName: "t" + n, fontSize: 16, color: C.text1, margin: 0 }, opt)); }
+function bullets(slide, items, opt) {
+  const runs = items.map((it, i) => {
+    const o = { bullet: true, breakLine: i < items.length - 1, paraSpaceAfter: 6 };
+    const last = i < items.length - 1;
+    if (Array.isArray(it)) return it.map((r, j) => ({ text: r.text, options: Object.assign({}, j === 0 ? { bullet: true, paraSpaceAfter: 6 } : {}, r.options || {}, j === it.length - 1 ? { breakLine: last } : {}) }));
+    return [{ text: it, options: o }];
+  }).flat();
+  T(slide, runs, Object.assign({ valign: "top" }, opt));
+}
+function takeaway(slide, text, y) {
+  n++;
+  slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { objectName: "tk" + n, x: 0.6, y: y || 6.25, w: 12.1, h: 0.65, fill: { color: C.background2 }, line: { color: C.accent1, width: 1 }, rectRadius: 0.08 });
+  T(slide, [{ text: "Takeaway  ", options: { bold: true, color: C.accent1 } }, { text }], { x: 0.85, y: (y || 6.25) + 0.05, w: 11.6, h: 0.55, fontSize: 16, valign: "middle" });
+}
+function img(slide, file, x, y, w, h) { n++; slide.addImage({ path: FIG + file, x, y, w, h, objectName: "img" + n }); }
+function content(section, title) { const s = pres.addSlide({ masterName: "CONTENT", sectionTitle: section }); s.addText(title, { placeholder: "title" }); return s; }
+
+// ---------------------------------------------------------------- 1 title
+pres.addSection({ title: "Introduction" });
+let s = pres.addSlide({ masterName: "DARK", sectionTitle: "Introduction" });
+s.addText("Gray-Zone Maritime Control in the First Island Chain", { placeholder: "title" });
+s.addText("A networked escalation game  |  Workshop 1\nSean Bowman, Tate Murphy, Matthew Newell", { placeholder: "body" });
+s.addNotes("We model day-to-day U.S.-China competition for control of waters inside the First Island Chain, below the threshold of war, as a game on a network. Today: the model, the prototype, and first results on our three research questions.");
+
+// ---------------------------------------------------------------- 2 problem
+s = content("Introduction", "The problem: control without war");
+img(s, "network.png", 0.6, 1.35, 4.9, 4.33);
+T(s, "Network of 8 contested zones and 4 home ports", { x: 0.6, y: 5.75, w: 4.9, h: 0.3, fontSize: 12, color: C.accent5, italic: true });
+bullets(s, [
+  [{ text: "Players. ", options: { bold: true, color: C.accent1 } }, { text: "Blue: 10 U.S. destroyers. Red: 8 navy ships + 6 coast guard / militia hulls." }],
+  [{ text: "Each period (2 days). ", options: { bold: true } }, { text: "Each side chooses where its ships go and whether to patrol (P) or assert (A: shadow, block, water cannon)." }],
+  [{ text: "Control ", options: { bold: true } }, { text: "of a zone follows the local force ratio, so each side's best move depends on the other's." }],
+  [{ text: "Incidents ", options: { bold: true, color: C.accent2 } }, { text: "happen when both are present and someone asserts. Incidents raise an escalation level; at the top is war, which costs both sides." }],
+  [{ text: "Fog. ", options: { bold: true } }, { text: "Each side only partly sees the other's ships. Weather (Nature) can close zones." }],
+], { x: 6.0, y: 1.45, w: 6.7, h: 4.6, fontSize: 18 });
+s.addNotes("Squares are home ports, circles are contested zones. The three features that make this a game rather than an optimization: control is relative, escalation risk is shared, and neither side sees everything.");
+
+// ---------------------------------------------------------------- 3 RQs + feedback
+s = content("Introduction", "Research questions and what changed since the proposal");
+const rq = [
+  ["RQ1", "Control vs. escalation", "How much control does a looser escalation-risk budget buy, at what war risk, and what budgets do both sides pick in equilibrium?"],
+  ["RQ2", "Strategic vs. heuristic play", "Do equilibrium, maximin and best-response policies beat simple rules, and can mutual restraint be sustained?"],
+  ["RQ3", "Robustness and redesign", "Is the best policy or design in normal weather also best when weather turns bad (expected and worst case)?"],
+];
+rq.forEach((r, i) => {
+  const y = 1.45 + i * 1.5;
+  n++; s.addShape(pres.shapes.OVAL, { objectName: "c" + n, x: 0.6, y: y + 0.1, w: 0.8, h: 0.8, fill: { color: C.accent1 } });
+  T(s, r[0], { x: 0.6, y: y + 0.1, w: 0.8, h: 0.8, fontSize: 16, bold: true, color: C.background1, align: "center", valign: "middle" });
+  T(s, [{ text: r[1], options: { bold: true, breakLine: true } }, { text: r[2], options: { fontSize: 14 } }], { x: 1.6, y, w: 5.0, h: 1.3, fontSize: 17, valign: "top" });
+});
+n++;
+s.addTable([
+  [{ text: "Feedback", options: { bold: true, color: C.background1, fill: { color: C.text2 } } }, { text: "What we did", options: { bold: true, color: C.background1, fill: { color: C.text2 } } }],
+  ["Model too high level", "Full formal game: state, actions, information, dynamics, payoffs"],
+  ["Q1 is a feasible region / MIP", "Best response solved as a MIP; aggressive/moderate/conservative = its risk budget ε"],
+  ["More ambitious questions", "Frontier + budget game, equilibrium play, robustness and redesign"],
+  ["Define the redesign", "Three Blue designs: extra port in the Philippines, extra surveillance, crisis hotline"],
+  ["Propose missing values", "All values listed and marked as assumptions"],
+  ["Prof. Sapsis: weather", "Weather scenarios as Nature's move; expected and worst-case payoff"],
+], { objectName: "fbtable", x: 7.0, y: 1.45, w: 5.7, colW: [2.0, 3.7], fontSize: 12, color: C.text1, border: { type: "solid", pt: 0.5, color: HEX.accent6 }, valign: "middle", rowH: 0.62 });
+s.addNotes("Each line of instructor feedback maps to a concrete change. The biggest: the model is now fully formal, and the strategy types from the proposal are now values of a risk budget inside a MIP.");
+
+// ---------------------------------------------------------------- 4 model
+pres.addSection({ title: "Model" });
+s = content("Model", "The game, one period at a time");
+const steps = ["Nature draws the sea state of each region", "Each side sees its own ships and detects some enemy ships", "Ships low on endurance head home", "Both sides choose moves and postures at the same time", "Moves happen within fuel budgets", "Control updates; incidents are drawn; escalation level moves", "Payoffs are paid; stop at war or after 60 periods"];
+steps.forEach((t, i) => {
+  const y = 1.4 + i * 0.66;
+  n++; s.addShape(pres.shapes.OVAL, { objectName: "st" + n, x: 0.6, y, w: 0.5, h: 0.5, fill: { color: i === 0 ? C.accent4 : (i === 5 ? C.accent2 : C.accent1) } });
+  T(s, String(i + 1), { x: 0.6, y, w: 0.5, h: 0.5, fontSize: 14, bold: true, color: C.background1, align: "center", valign: "middle" });
+  T(s, t, { x: 1.25, y, w: 5.2, h: 0.5, fontSize: 16, valign: "middle" });
+});
+n++; s.addShape(pres.shapes.ROUNDED_RECTANGLE, { objectName: "eqbox", x: 6.9, y: 1.4, w: 5.8, h: 4.55, fill: { color: C.background2 }, line: { color: C.accent6, width: 1 }, rectRadius: 0.08 });
+T(s, [
+  { text: "Control of zone v", options: { bold: true, color: C.accent1, breakLine: true } },
+  { text: "c ← 0.7·c + 0.3·φ,   φ = (S_B − S_R) / (S_B + S_R + 1)", options: { fontFace: "Cambria", breakLine: true } },
+  { text: "Presence builds control slowly; leaving lets it decay.", options: { fontSize: 13, color: C.accent5, breakLine: true } },
+  { text: " ", options: { fontSize: 8, breakLine: true } },
+  { text: "Incident chance", options: { bold: true, color: C.accent2, breakLine: true } },
+  { text: "h = (h₀ + h_A·[asserts]) · min(S_B, S_R) · (1 + ℓ/2),  ρ = 1 − e^(−h)", options: { fontFace: "Cambria", breakLine: true } },
+  { text: "Needs both sides present; grows with assertion and with the escalation level ℓ.", options: { fontSize: 13, color: C.accent5, breakLine: true } },
+  { text: " ", options: { fontSize: 8, breakLine: true } },
+  { text: "Payoff", options: { bold: true, color: C.text2, breakLine: true } },
+  { text: "Σ value × control − move cost − escalation cost − 200·[war]", options: { fontFace: "Cambria", breakLine: true } },
+  { text: "War hurts both sides, so the game is not zero-sum.", options: { fontSize: 13, color: C.accent5 } },
+], { x: 7.15, y: 1.55, w: 5.3, h: 4.3, fontSize: 14, valign: "top" });
+takeaway(s, "Every rule is explicit, so the same game can be played thousands of times by different strategies.");
+s.addNotes("The timeline is the sequence of play. The three formulas are all the dynamics: control follows the force ratio with smoothing, incidents need contact and grow with assertion and with escalation, and the war penalty is shared.");
+
+// ---------------------------------------------------------------- 5 decisions
+s = content("Model", "How the players decide");
+const cards = [
+  ["Best response as a MIP", C.accent1, "Each period, choose moves and postures to maximize value of control minus costs, subject to fuel, endurance, and an escalation-risk budget:\n\nexpected incidents ≤ ε", "Conservative / moderate / aggressive = ε of 0.05 / 0.15 / 0.40"],
+  ["Template game", C.accent4, "Abstract each side to 14 templates: how to split ships North / Center / South, and patrol or assert.\n\nA 14×14 strategic-form game", "Solved with dominance, Nash equilibrium, maximin LP, correlated-equilibrium LP"],
+  ["Policies we compare", C.accent2, "Random moves  |  Rule of thumb\nQuick best response (greedy)\nBest response (MIP)\nNash equilibrium plan\nSafety-first plan (maximin)", "Same seeds and weather for every policy"],
+];
+cards.forEach((c, i) => {
+  const x = 0.6 + i * 4.1;
+  n++; s.addShape(pres.shapes.RECTANGLE, { objectName: "cd" + n, x, y: 1.4, w: 3.9, h: 4.6, fill: { color: C.background2 }, line: { color: c[1], width: 1.5 } });
+  n++; s.addShape(pres.shapes.RECTANGLE, { objectName: "cdh" + n, x, y: 1.4, w: 3.9, h: 0.6, fill: { color: c[1] }, line: { color: c[1], width: 1.5 } });
+  T(s, c[0], { x: x + 0.2, y: 1.4, w: 3.5, h: 0.6, fontSize: 18, bold: true, color: C.background1, valign: "middle" });
+  T(s, c[2], { x: x + 0.2, y: 2.15, w: 3.5, h: 2.7, fontSize: 15, valign: "top" });
+  T(s, c[3], { x: x + 0.2, y: 4.95, w: 3.5, h: 0.9, fontSize: 13, italic: true, color: C.accent5, valign: "top" });
+});
+takeaway(s, "The proposal's strategy types are now one number, ε, inside an optimization the course covered (Lecture 2).");
+s.addNotes("The MIP answers the instructor's comment that Q1 is a feasible region. The template game is small enough to solve exactly with the Lecture 3-4 tools.");
+
+// ---------------------------------------------------------------- 6 chicken
+pres.addSection({ title: "Results" });
+s = content("Results", "Small example: patrol or assert is a game of chicken");
+n++;
+const hdr = (t) => ({ text: t, options: { bold: true, color: C.background1, fill: { color: C.text2 }, align: "center" } });
+s.addTable([
+  [hdr("Blue \\ Red"), hdr("Red patrols"), hdr("Red asserts")],
+  [{ text: "Blue patrols", options: { bold: true } }, { text: "0 , 0", options: { align: "center" } }, { text: "−9.6 , +1.2", options: { align: "center" } }],
+  [{ text: "Blue asserts", options: { bold: true } }, { text: "+0.3 , −10.5", options: { align: "center" } }, { text: "−11.4 , −11.3", options: { align: "center", color: C.accent2, bold: true } }],
+], { objectName: "chicken", x: 0.6, y: 1.5, w: 6.0, colW: [1.8, 2.1, 2.1], rowH: 0.75, fontSize: 18, border: { type: "solid", pt: 0.75, color: HEX.accent6 }, valign: "middle" });
+T(s, "Payoffs (Blue, Red) in one zone, relative to both patrolling", { x: 0.6, y: 3.85, w: 6.0, h: 0.35, fontSize: 12, italic: true, color: C.accent5 });
+bullets(s, [
+  [{ text: "Best reply: ", options: { bold: true } }, { text: "assert if the other patrols, patrol if the other asserts. Two pure equilibria, plus a mixed one with mutual assertion 8% of the time." }],
+  [{ text: "A mediator helps: ", options: { bold: true } }, { text: "the best correlated equilibrium never recommends (assert, assert). A hotline can play that role." }],
+  [{ text: "Repetition helps: ", options: { bold: true } }, { text: "with grim trigger, mutual patrolling is a subgame perfect equilibrium for any discount factor above 0.18. Ours is 0.98." }],
+], { x: 7.0, y: 1.5, w: 5.7, h: 4.5, fontSize: 17 });
+takeaway(s, "Restraint is not stable in a one-shot encounter, but it can be sustained by repeated play or a coordination device.");
+s.addNotes("Numbers come from the template game with the dominance-surviving force splits. Lectures 3-6: chicken, correlated equilibrium LP, grim trigger with the one-stage deviation principle.");
+
+// ---------------------------------------------------------------- 7 prototype
+s = content("Results", "The prototype: watch a game play out");
+img(s, "gui_screenshot.png", 0.6, 1.45, 7.2, 4.57);
+bullets(s, [
+  [{ text: "Pick ", options: { bold: true } }, { text: "a plan for each side, a design and the weather on the right; press New game, then Step or Play. Help explains the map." }],
+  [{ text: "Zone color ", options: { bold: true } }, { text: "shows control: blue = Blue, red = Red." }],
+  [{ text: "B / P / C ", options: { bold: true } }, { text: "= destroyers, navy ships, coast guard. Thick outline = asserting." }],
+  [{ text: "Orange ring ", options: { bold: true, color: C.accent3 } }, { text: "= incident. Shaded region = rough sea or storm." }],
+  [{ text: "Run many games ", options: { bold: true } }, { text: "replays the same setup over many random seeds and reports averages." }],
+], { x: 8.1, y: 1.45, w: 4.6, h: 4.7, fontSize: 16 });
+s.addNotes("One Python file runs the GUI, batch runs and a per-period trace. A second script regenerates every number in the report. Rule of thumb (Blue) vs quick best response (Red), normal season, turn 12, a storm over the North.");
+
+// ---------------------------------------------------------------- 8 RQ1
+s = content("Results", "RQ1: more risk buys control, up to a point");
+img(s, "frontier.png", 0.6, 1.35, 6.0, 4.17);
+n++;
+const cell = (t, war, bold) => ({ text: t + "\nwar " + war, options: { align: "center", bold: !!bold, color: bold ? C.accent2 : C.text1 } });
+s.addTable([
+  [hdr("Blue \\ Red"), hdr("Conservative"), hdr("Moderate"), hdr("Aggressive")],
+  [{ text: "Conservative", options: { bold: true } }, cell("−194, 199", "10%"), cell("−303, 315", "11%"), cell("−308, 318", "12%")],
+  [{ text: "Moderate", options: { bold: true } }, cell("18, −36", "15%"), cell("−144, 101", "20%"), cell("−192, 140", "21%")],
+  [{ text: "Aggressive", options: { bold: true } }, cell("74, −80", "14%"), cell("−83, 16", "25%"), cell("−151, 39", "34%", true)],
+], { objectName: "riskgame", x: 6.9, y: 1.5, w: 5.8, colW: [1.6, 1.4, 1.4, 1.4], rowH: 0.8, fontSize: 13, border: { type: "solid", pt: 0.5, color: HEX.accent6 }, valign: "middle" });
+T(s, "Risk-budget game: payoffs (Blue, Red) and war rate. Red bold = the only equilibrium.", { x: 6.9, y: 4.85, w: 5.8, h: 0.5, fontSize: 12, italic: true, color: C.accent5 });
+T(s, "Raising Blue's budget from 0.02 to 0.15 lifts its control a lot; beyond 0.25 it barely moves.", { x: 0.6, y: 5.55, w: 6.0, h: 0.5, fontSize: 13, color: C.accent5 });
+takeaway(s, "Both sides choose aggressive, giving the highest war rate (34%): a prisoner's dilemma.");
+s.addNotes("Left: Blue relaxes its risk budget while Red stays at 0.15. Right: both pick a budget; aggressive is a best response to everything for both, so the equilibrium is worst for the pair.");
+
+// ---------------------------------------------------------------- 9 RQ2
+s = content("Results", "RQ2: the Nash equilibrium plan is the safest bet against any Red");
+n++;
+s.addChart(pres.charts.BAR, [{ name: "Blue payoff vs. its worst Red opponent", labels: ["Random moves", "Rule of thumb", "Safety-first plan", "Best response (MIP)", "Quick best response", "Nash equilibrium plan"], values: [-319, -184, -221, -144, -137, -116] }], {
+  objectName: "rq2chart", x: 0.6, y: 1.35, w: 7.2, h: 4.7, barDir: "bar",
+  chartColors: [HEX.accent5, HEX.accent5, HEX.accent5, HEX.accent1, HEX.accent1, HEX.accent4],
+  showValue: true, dataLabelPosition: "outEnd", dataLabelFontSize: 12, dataLabelFontFace: "+mn-lt", dataLabelColor: HEX.dk1,
+  showTitle: true, title: "Blue payoff against its worst Red opponent (higher is better)", titleFontSize: 14, titleFontFace: "+mn-lt", titleColor: HEX.dk2,
+  catAxisLabelFontSize: 13, catAxisLabelFontFace: "+mn-lt", catAxisLabelColor: HEX.dk1, valAxisLabelFontSize: 11, valAxisLabelFontFace: "+mn-lt", valAxisLabelColor: HEX.accent5,
+  valGridLine: { color: "DDE3EA", size: 0.5 }, catGridLine: { style: "none" }, catAxisLabelPos: "low", showLegend: false, valAxisMinVal: -350, valAxisMaxVal: 0,
+});
+bullets(s, [
+  [{ text: "Nash equilibrium plan ", options: { bold: true, color: C.accent4 } }, { text: "has the best worst case (−116) and half the war rate of the MIP best response against the same opponent (10% vs 20%)." }],
+  [{ text: "Best responses ", options: { bold: true, color: C.accent1 } }, { text: "(quick and MIP) win against weak opponents but escalate more." }],
+  [{ text: "Safety-first plan ", options: { bold: true } }, { text: "is the most cautious (war ≤ 8%) but gives up the most control." }],
+  [{ text: "Quick vs MIP: ", options: { bold: true } }, { text: "the quick heuristic matches the MIP 67% of the time but breaks the risk budget 14% of the time." }],
+], { x: 8.1, y: 1.45, w: 4.6, h: 4.7, fontSize: 16 });
+s.addNotes("Each Blue policy plays against three Red policies (rule-based, MIP best response, equilibrium); the bar is Blue's lowest payoff of the three. 200 games each, standard errors 1 to 7.");
+
+// ---------------------------------------------------------------- 10 RQ3
+s = content("Results", "RQ3: the best strategy holds up in bad weather");
+img(s, "weather.png", 0.6, 1.35, 5.9, 3.93);
+T(s, "Rough seas weaken Red's coast guard hulls and storms pause operations, so most policies do slightly worse in calm seas. The top two plans stay on top in every scenario.", { x: 0.6, y: 5.35, w: 5.9, h: 0.75, fontSize: 13, color: C.accent5 });
+n++;
+s.addChart(pres.charts.BAR, [
+  { name: "Expected", labels: ["D0 Baseline", "D1 Extra port", "D2 Extra surveillance", "D3 Crisis hotline"], values: [-144, -137, -162, -120] },
+  { name: "Worst case", labels: ["D0 Baseline", "D1 Extra port", "D2 Extra surveillance", "D3 Crisis hotline"], values: [-164, -153, -181, -140] },
+], {
+  objectName: "rq3chart", x: 6.8, y: 1.35, w: 5.9, h: 3.6, barDir: "col", barGrouping: "clustered",
+  chartColors: [HEX.accent1, HEX.accent2], showValue: true, dataLabelPosition: "outEnd", dataLabelFontSize: 11, dataLabelFontFace: "+mn-lt", dataLabelColor: HEX.dk1,
+  showTitle: true, title: "Blue payoff by design over weather scenarios", titleFontSize: 14, titleFontFace: "+mn-lt", titleColor: HEX.dk2,
+  showLegend: true, legendPos: "b", legendFontSize: 12, legendFontFace: "+mn-lt",
+  catAxisLabelFontSize: 12, catAxisLabelFontFace: "+mn-lt", catAxisLabelColor: HEX.dk1, valAxisLabelFontSize: 11, valAxisLabelFontFace: "+mn-lt", valAxisLabelColor: HEX.accent5,
+  valGridLine: { color: "DDE3EA", size: 0.5 }, catGridLine: { style: "none" }, catAxisLabelPos: "low", valAxisMinVal: -200, valAxisMaxVal: 0,
+});
+T(s, "War rate (normal weather): D0 20%, D1 28%, D2 23%, D3 5%. The hotline was given no cost yet.", { x: 6.8, y: 5.0, w: 5.9, h: 0.4, fontSize: 13, color: C.accent5 });
+takeaway(s, "The plan that is best on average is also best in the worst weather. The crisis hotline is the best design and cuts war about 4×.");
+s.addNotes("Robustness in the Lecture 1 sense: expected payoff over the weather scenarios and worst-case payoff. The hotline also raises Red's payoff, because fewer wars help both sides: it is a joint gain, not a Blue advantage.");
+
+// ---------------------------------------------------------------- 11 caveats
+s = content("Results", "What the evidence does and does not show");
+const col = (x, head, color, items) => {
+  n++; s.addShape(pres.shapes.RECTANGLE, { objectName: "cv" + n, x, y: 1.4, w: 5.9, h: 0.6, fill: { color }, line: { color } });
+  T(s, head, { x: x + 0.2, y: 1.4, w: 5.5, h: 0.6, fontSize: 18, bold: true, color: C.background1, valign: "middle" });
+  bullets(s, items, { x: x + 0.1, y: 2.2, w: 5.7, h: 3.9, fontSize: 16 });
+};
+col(0.6, "Supported", C.accent4, [
+  "Loosening the risk budget has sharply diminishing returns",
+  "Left alone, both sides loosen their budgets (prisoner's dilemma)",
+  "Restraint can be an equilibrium of the repeated game",
+  "The Nash equilibrium plan is the most robust Blue policy here",
+  "A crisis hotline is a joint gain under every weather scenario",
+]);
+col(6.8, "Not yet shown", C.accent2, [
+  "All numbers are assumptions, not calibrated to data",
+  "Policies look only one period ahead",
+  "War penalty may be too small: the top-payoff policy also has the most wars",
+  "The hotline has no cost yet, so part of its win is built in",
+  "Differences under about 20 payoff points are ties",
+]);
+s.addNotes("Be direct about limits. The war rate depends strongly on the hazard, de-escalation and war-penalty values; a sensitivity sweep is planned.");
+
+// ---------------------------------------------------------------- 12 plan
+pres.addSection({ title: "Next steps" });
+s = content("Next steps", "Plan for Workshop 2");
+const plan = [
+  ["Nov 3", "Beliefs and attacks", "Bayesian beliefs about enemy positions; weather that persists; test the three coded Red attacks (blockade, jamming, false contacts)"],
+  ["Nov 17", "Learning", "Red agents that learn from experience: do they exploit predictable Blue play? An attacker that moves after seeing Blue"],
+  ["Dec 1", "Redesign", "Designs and combinations under attacks, persistent weather and a rare long typhoon; hotline as a mediator"],
+  ["Dec 8", "Report", "Final report and presentation"],
+];
+n++; s.addShape(pres.shapes.LINE, { objectName: "tl", x: 1.0, y: 2.1, w: 11.3, h: 0, line: { color: C.accent6, width: 3 } });
+plan.forEach((p, i) => {
+  const x = 0.6 + i * 3.05;
+  n++; s.addShape(pres.shapes.OVAL, { objectName: "tp" + n, x: x + 0.2, y: 1.85, w: 0.5, h: 0.5, fill: { color: i === 3 ? C.accent2 : C.accent1 } });
+  T(s, p[0], { x, y: 1.35, w: 2.8, h: 0.4, fontSize: 16, bold: true, color: C.accent1 });
+  T(s, p[1], { x, y: 2.55, w: 2.8, h: 0.45, fontSize: 18, bold: true, color: C.text2 });
+  T(s, p[2], { x, y: 3.05, w: 2.8, h: 2.8, fontSize: 15, valign: "top" });
+});
+takeaway(s, "Each step follows the remaining course modules: learning, attacks and defenses, resilient design.");
+s.addNotes("About 40 configurations of 200 games each. Every new piece is evaluated against the Workshop 1 policies.");
+
+(async () => {
+  const out = __dirname + "/../deliverables/02-workshop1-slides.pptx";
+  await pres.writeFile({ fileName: out });
+  await applyTheme(out, THEME);
+  console.log("wrote", out);
+})();

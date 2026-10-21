@@ -16,7 +16,16 @@ See the proposal in `deliverables/` for the full model and literature.
 
 | Path | Contents |
 | --- | --- |
-| `deliverables/` | Submitted project deliverables (PDF) |
+| `deliverables/` | Submitted deliverables: `01-proposal.pdf`, `02-workshop1-report.pdf`, `02-workshop1-slides.pptx` |
+| `prototype/` | Simulator and GUI (`wargame_gui.py`), experiment scripts, and all Workshop 1 results (`results/`); see `prototype/README.md` |
+| `report/` | LaTeX source of the Workshop 1 report (`pdflatex report.tex`, twice) |
+| `slides/` | Script that builds the Workshop 1 slides (`npm install && node build.js`) |
 | `course-materials/` | Instructor handouts: wargame scope sheet and deliverable instructions |
 
-Code, notes and later deliverables will be added as the project develops.
+## Reproducing the Workshop 1 results
+
+```
+cd prototype
+python3 wargame_gui.py            # interactive GUI
+python3 experiments.py all        # every table and figure in the report (needs gurobipy, matplotlib)
+```

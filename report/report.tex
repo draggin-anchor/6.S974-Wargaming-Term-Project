@@ -1,0 +1,287 @@
+\documentclass[10pt]{article}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+\usepackage[hidelinks]{hyperref}
+\usepackage[font=small,skip=3pt]{caption}
+\usepackage{graphicx}
+\usepackage[round]{natbib}
+\usepackage{titlesec}
+\setlist{nosep,leftmargin=*}
+\titlespacing*{\section}{0pt}{6pt}{3pt}
+\titlespacing*{\subsection}{0pt}{4pt}{2pt}
+\titlespacing*{\paragraph}{0pt}{3pt}{6pt}
+\setlength{\parskip}{2pt}
+\setlength{\textfloatsep}{6pt}
+\setlength{\floatsep}{6pt}
+\setlength{\intextsep}{6pt}
+
+\newcommand{\I}{\mathcal{I}}
+\newcommand{\V}{\mathcal{V}}
+\newcommand{\E}{\mathcal{E}}
+\newcommand{\C}{\mathcal{C}}
+\newcommand{\K}{\mathcal{K}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\1}{\mathbf{1}}
+\newcommand{\B}{\mathsf{B}}
+\newcommand{\Rd}{\mathsf{R}}
+\newcommand{\As}{\mathrm{A}}
+\newcommand{\Pt}{\mathrm{P}}
+
+\title{\vspace{-2.2em}\textbf{Gray-Zone Maritime Control in the First Island Chain:\\ A Networked Escalation Game}\\[2pt]
+\large Workshop 1 Report (Deliverable 2)}
+\author{Sean Bowman, Tate Murphy, Matthew Newell\\
+\small 6.S974/2.S988/1.S980 Games, Learning, and Security, Fall 2026}
+\date{\vspace{-2.2em}}
+
+\begin{document}
+\maketitle
+
+%======================================================================
+\section{Setting and research questions}
+%======================================================================
+\textbf{Contested system.} China and the United States compete for day-to-day control of the waters inside the
+First Island Chain (Senkakus, Taiwan Strait, Luzon Strait, Scarborough and Second Thomas Shoals, Paracels)
+\emph{below the threshold of war}. China keeps persistent presence with coast guard and maritime militia
+(CCG) hulls backed by navy (PLAN) ships; the U.S.\ keeps a smaller number of destroyers (DDG) on presence
+and freedom-of-navigation patrols \citep{helmus2024,green2017}. Each side decides, every two days,
+\emph{where} to station its ships on a network of zones and \emph{how} to behave there: patrol (P) or
+assert (A: shadowing, blocking, water cannon, close maneuvering).
+
+\textbf{Why strategic interaction is central.} Control of a zone depends on the local force ratio, so each
+side's best allocation depends on the other's; escalation risk is joint (incidents need both sides present, and
+war costs both); and neither side sees the other's whole fleet.
+
+\textbf{Research questions.}
+\begin{enumerate}[label=\textbf{RQ\arabic*.}]
+\item \emph{Control vs.\ escalation.} Each side's allocation is a MIP with an escalation-risk budget
+$\varepsilon_i$. How much control does a larger $\varepsilon_i$ buy, at what war risk, and which budgets are
+equilibrium choices when both sides pick them?
+\item \emph{Strategic vs.\ heuristic play.} Do game-theoretic policies (equilibrium and maximin strategies,
+exact best responses) beat random and rule-based ones, and can mutual restraint be sustained in repeated play?
+\item \emph{Robustness and redesign.} Is the best policy or Blue design under nominal conditions also the most
+robust to weather (Nature's scenario $\omega$), in expected and worst-case terms?
+\end{enumerate}
+\textbf{Outcomes} (averaged over 200 seeds): Blue's value-weighted control share
+$\bar c_\B=\frac1\tau\sum_t\sum_{v}V^\B_v c^t_v/\sum_v V^\B_v\in[-1,1]$, war rate, payoffs $u_\B,u_\Rd$, and for RQ3
+the expected and worst-case payoff over $\omega$.
+
+\textbf{Changes from the proposal and how we used the feedback.}
+\begin{center}\small\vspace{-4pt}
+\begin{tabular}{p{0.37\textwidth}p{0.57\textwidth}}
+\toprule
+Feedback & What we changed (section)\\\midrule
+Model too high level; define it mathematically & Full game on a graph: state, actions, information, dynamics, payoffs (\S3)\\
+Q1 is a feasible region; can be a MIP & Best response solved exactly as a MIP; the old aggressive/moderate/conservative types are values of its risk budget $\varepsilon_i$ (\S3.4)\\
+Research questions more ambitious & RQ1: frontier and equilibrium of a budget game; RQ2: equilibrium play; RQ3: robustness and redesign\\
+Define the resilient redesign & Three Blue designs (\S3.5), tested in \S4.5\\
+Propose values for missing data & All values in Table~\ref{tab:params}, marked as assumptions\\
+Show preliminary results & Analytical results and 77 simulated configurations $\times$ 200 seeds (\S4)\\
+Prof.\ Sapsis: add external uncertainty (weather) and test robustness & Sea state is Nature's move; four weather scenarios; expected and worst-case payoff (\S3.2, \S4.5)\\
+\bottomrule
+\end{tabular}\vspace{-6pt}
+\end{center}
+
+%======================================================================
+\section{Literature and current practice}
+%======================================================================
+\textbf{Documented practice.} \citet{helmus2024} catalog China's gray-zone tactics: persistent CCG and militia
+presence, shadowing, blocking resupply at Second Thomas Shoal, water cannon, and non-navy hulls that stay below
+the threshold of armed response. \citet{green2017} argue that deterrence below war depends on presence and on
+managing escalation. U.S.\ practice is routine presence and freedom-of-navigation patrols, with encounters managed
+by the Code for Unplanned Encounters at Sea \citep{cues2014}. We take from these the action set (presence,
+patrol vs.\ assert), the asymmetric hull types, and the idea that incidents, not shots, drive escalation.
+\textbf{Models.} \citet{wasser2019} design a seminar gray-zone game with explicit objectives and action menus;
+we make every adjudication rule computable. The U.S.\ Coast Guard schedules randomized patrols from a game model
+\citep{shieh2012}; zero-sum network games model transit and blockade \citep{washburn1995}; escalation as a shared,
+manipulated risk \citep{schelling1966} is what our incident hazard makes explicit.
+\textbf{What we add:} a general-sum game where both sides contest control at once and war is a joint cost,
+with explicit rules so strategies and designs can be compared over thousands of runs. Numerical values are our
+assumptions (Table~\ref{tab:params}), not documented data.
+
+%======================================================================
+\section{Game formulation}
+%======================================================================
+\subsection{Agents, network and state}
+Players $\I=\{\B,\Rd\}$. Ship types $\K_\B=\{\text{DDG}\}$ ($10$ hulls), $\K_\Rd=\{\text{PLAN},\text{CCG}\}$
+($8$ and $6$). The theater is an undirected graph $G=(\V,\E)$ (Fig.~\ref{fig:net}) with Blue home ports
+$H_\B=\{\text{YOK},\text{GUA}\}$, Red home ports $H_\Rd=\{\text{NBO},\text{SAN}\}$ and eight contested zones $\C$
+grouped into regions North $=\{\text{SEN},\text{MIY}\}$, Center $=\{\text{TWN},\text{EOT},\text{LUZ}\}$,
+South $=\{\text{SCB},\text{STS},\text{PAR}\}$. One period is two days; an edge takes one period.
+The state at period $t$ is $s^t=(x^t,d^t,c^t,\ell^t,w^t)$, where $x^t_{k,v}\in\Z_{\ge0}$ counts type-$k$ ships at node $v$; $d^t$ gives each ship's remaining endurance
+(periods at sea, at most $D_k$); $c^t_v\in[-1,1]$ is the control index of zone $v$ ($+1$ Blue, $-1$ Red);
+$\ell^t\in\{0,\dots,L\}$ is the escalation level ($L=5$ is war); and $w^t_r\in\{\text{calm},\text{rough},\text{storm}\}$
+is the sea state of region $r$.
+
+\begin{figure}[t]
+\centering
+\begin{minipage}{0.36\textwidth}\centering
+\begin{tikzpicture}[x=0.13cm,y=0.13cm,
+  c/.style={circle,draw,fill=gray!12,inner sep=0.8pt,font=\tiny},
+  hb/.style={rectangle,draw=blue!70!black,fill=blue!15,inner sep=1.5pt,font=\tiny},
+  hr/.style={rectangle,draw=red!70!black,fill=red!15,inner sep=1.5pt,font=\tiny},
+  hd/.style={rectangle,draw=blue!70!black,dashed,fill=blue!5,inner sep=1.5pt,font=\tiny}]
+\node[hr] (NBO) at (10,25) {NBO}; \node[c] (SEN) at (17,22.5) {SEN}; \node[c] (MIY) at (24.5,21) {MIY};
+\node[hb] (YOK) at (33,26) {YOK}; \node[c] (TWN) at (9,17.5) {TWN}; \node[c] (EOT) at (20,15.5) {EOT};
+\node[c] (LUZ) at (12.5,11) {LUZ}; \node[hb] (GUA) at (31,9) {GUA}; \node[hr] (SAN) at (-1,8) {SAN};
+\node[c] (PAR) at (2.5,3) {PAR}; \node[c] (SCB) at (10,3.5) {SCB}; \node[c] (STS) at (6.5,-3) {STS};
+\node[hd] (PHL) at (16,1) {PHL};
+\foreach \a/\b in {YOK/MIY,MIY/SEN,MIY/EOT,SEN/NBO,SEN/TWN,NBO/TWN,TWN/EOT,TWN/LUZ,
+  EOT/LUZ,EOT/GUA,GUA/LUZ,LUZ/SCB,LUZ/SAN,SCB/STS,SCB/PAR,PAR/SAN,SAN/STS,STS/PAR}
+  \draw (\a)--(\b);
+\foreach \a/\b in {PHL/SCB,PHL/LUZ,PHL/STS} \draw[dashed,blue!60] (\a)--(\b);
+\end{tikzpicture}
+\end{minipage}\hfill
+\begin{minipage}{0.62\textwidth}\small
+\textbf{One period $t$ (timeline).}
+\begin{enumerate}[label=\arabic*.,leftmargin=1.2em]
+\item Nature draws the sea state $w^t_r$ of each region (scenario $\omega$).
+\item Each player observes its own ships, $\ell^t$, $c^t$, $w^t$, and detects opponent ships with probability $q_{i,v}$.
+\item Ships whose endurance is nearly spent are forced toward home.
+\item Both players choose moves and postures \emph{simultaneously}.
+\item Moves resolve under fuel budgets; endurance updates.
+\item Control indices update; incidents are drawn; $\ell$ moves up or down.
+\item Stage payoffs are paid; the game stops if $\ell=L$ (war) or $t=T=60$.
+\end{enumerate}
+\end{minipage}
+\caption{Left: theater graph $G$ (schematic). Squares: home ports (blue $H_\B$, red $H_\Rd$); circles:
+contested zones. Dashed: Subic/EDCA port and edges added by redesign D1. Right: sequence of play.}
+\label{fig:net}
+\end{figure}
+
+\subsection{Actions, constraints, information and uncertainty}
+\textbf{Actions.} Each period player $i$ chooses for every free ship a destination at most one edge away
+(staying is allowed) and a posture $p_{i,v}\in\{\Pt,\As\}$ at every zone it occupies. Writing $f^t_{k,uv}$ for the
+number of type-$k$ ships moving from $u$ to $v$, the feasible set is defined by
+\begin{align*}
+&x^{t+1}_{k,u}=x^t_{k,u}+\textstyle\sum_{v\in\delta(u)}f^t_{k,vu}-\sum_{v\in\delta(u)}f^t_{k,uv}
+&&\text{(flow conservation, Lecture 2)}\\
+&\textstyle\sum_{k,(u,v)}f^t_{k,uv}\le F_i &&\text{(fuel: } F_\B=8,\ F_\Rd=10 \text{ moves/period)}\\
+&d\le\operatorname{dist}(v,H_i)\Rightarrow\text{ship heads home};\ d\leftarrow D_k\text{ after a period in port} &&\text{(endurance)}
+\end{align*}
+and no ship may enter the opponent's home port or a storm-closed zone.
+
+\textbf{Information.} Each player observes its own ships, $c^t$, $\ell^t$ and $w^t$ (public). It detects the
+opponent's ships at $v$ with probability $q_{i,v}=0.95$ if it has a ship at $v$, $0.6$ if adjacent, $0.2$ otherwise
+(satellite); Red has $q\ge0.6$ at four zones near its coast; rough or storm seas multiply $q$ by $0.7$.
+A player's \emph{belief} is the last detected count at each node, so players move simultaneously at
+information sets that do not reveal the opponent's positions (imperfect monitoring, Lectures 5--8).
+
+\textbf{Uncertainty (Nature).} Weather: in scenario $\omega\in\Omega=\{\text{calm},\text{nominal},\text{typhoon},\text{extreme}\}$
+(weights $\pi_\omega=(0.25,0.40,0.25,0.10)$, Lecture 1), each region starts a 3-period storm w.p.\
+$p_s(\omega)\in\{0,0.02,0.06,0.12\}$ and is otherwise rough w.p.\ $p_r(\omega)\in\{0,0.2,0.35,0.5\}$. A storm closes
+the region's zones and freezes their control; rough seas halve CCG effectiveness and degrade detection. Incidents are also random (below).
+
+\subsection{Transition dynamics, payoffs and termination}
+\textbf{Control.} Local strength is $S_{i,v}=\sum_{k\in\K_i}w_k\,\alpha^{\1[p_{i,v}=\As]}x_{k,v}$ with
+$w_{\text{DDG}}=w_{\text{PLAN}}=1$, $w_{\text{CCG}}=0.6$ ($0.3$ in rough seas), $\alpha=1.5$. With
+$\phi_v=(S_{\B,v}-S_{\Rd,v})/(S_{\B,v}+S_{\Rd,v}+\kappa)$,
+\begin{equation}
+c^{t+1}_v=(1-\lambda)c^t_v+\lambda\phi_v,\qquad\lambda=0.3,\ \kappa=1,\label{eq:control}
+\end{equation}
+so control is earned by persistent presence and decays when a side leaves.
+
+\textbf{Incidents and escalation.} Where both sides are present, an incident occurs with probability
+$\rho_v=1-e^{-h_v}$, where
+\begin{equation}
+h_v=\big(h_0+h^\B_\As\1[p_{\B,v}=\As]+h^\Rd_\As\1[p_{\Rd,v}=\As]\big)\min\{S_{\B,v},S_{\Rd,v}\}\,(1+\ell^t/2).\label{eq:hazard}
+\end{equation}
+Each incident raises $\ell$ by one; a period without incidents lowers $\ell$ by one with probability $\mu=0.25$.
+The factor $(1+\ell/2)$ makes crises self-reinforcing.
+
+\textbf{Payoffs.} With $\sigma_\B=+1$, $\sigma_\Rd=-1$ and $m^t_i$ the number of moves,
+\begin{equation}
+g_i^t=\sigma_i\textstyle\sum_{v\in\C}V^i_v\,c^{t+1}_v-\gamma\,m^t_i-\eta\,\ell^{t+1},\qquad
+u_i=\sum_{t=1}^{\tau}\delta^{t-1}g_i^t-W\,\1[\ell^\tau=L],\label{eq:payoff}
+\end{equation}
+where $\tau=\min\{T,\ \text{first } t \text{ with } \ell^t=L\}$ (termination by war or horizon). The war penalty $W$
+hits both players, which makes the game general-sum. Zone values $V^i_v$ differ by player (Table~\ref{tab:params}).
+
+\begin{table}[t]\centering\small
+\resizebox{\textwidth}{!}{\begin{tabular}{lcccccccc|l}
+\toprule
+Zone & TWN & SEN & MIY & EOT & LUZ & SCB & STS & PAR & Other parameters\\\midrule
+$V^\B_v$ & 10 & 6 & 4 & 4 & 6 & 5 & 5 & 2 & $T=60$, $\delta=0.98$, $\gamma=0.1$, $\eta=1$, $W=200$, $\ell^1=1$\\
+$V^\Rd_v$ & 10 & 6 & 3 & 4 & 5 & 7 & 6 & 6 & $h_0=0.006$, $h^\B_\As=0.03$, $h^\Rd_\As=0.036$ (PLAN), $0.012$ (CCG)\\
+$c^1_v$ & 0 & 0.2 & 0.3 & 0.2 & 0.1 & $-0.2$ & 0 & $-0.4$ & $D_{\text{DDG}}=10$, $D_{\text{PLAN}}=8$, $D_{\text{CCG}}=6$, $\Lambda=20$\\
+\bottomrule
+\end{tabular}}
+\caption{Proposed parameter values (assumptions; no public data). Hazards and $\mu$ were set so that war is uncommon but not rare (0--34\% of games across the configurations tested).}
+\label{tab:params}
+\end{table}
+
+\subsection{Decision models: the best-response MIP and the template game}\label{sec:mip}
+\textbf{Best response as a MIP (Lecture 2).} Given its beliefs $\hat x_{-i}$ and the sea state, player $i$
+chooses binary moves $y_{s,w}$ (ship $s$ goes to node $w$) and, at every zone, one binary option
+$b_{v,(n,p)}$ meaning ``I will have $n$ hulls at $v$ with posture $p$''. Because $\phi_v$ and $\rho_v$ are nonlinear
+in the counts, we tabulate them for every option, which makes the problem linear:
+\begin{align*}
+\max_{y,b,x}\ \ &\textstyle\sum_{v\in\C}\sum_{(n,p)}a_v(n,p)\,b_{v,(n,p)}-\gamma\sum_{s,\,w\ne\text{loc}(s)}y_{s,w}\\
+\text{s.t.}\ \ &\textstyle\sum_w y_{s,w}=1\ \ \forall s;\quad \sum_{s,\,w\ne\text{loc}(s)}y_{s,w}\le F_i;\quad
+x_{k,v}=\bar x_{k,v}+\sum_{s\text{ of type }k}y_{s,v};\\
+&\textstyle\sum_{(n,p)}b_{v,(n,p)}=1,\quad \sum_{(n,p)}n_k\,b_{v,(n,p)}=x_{k,v}\ \ \forall v,k;\qquad
+\sum_{v}\sum_{(n,p)}\rho_v(n,p)\,b_{v,(n,p)}\le\varepsilon_i\,(1-\ell^t/L);\\
+&y,b\in\{0,1\},
+\end{align*}
+where $a_v(n,p)=V^i_v\lambda H\,\sigma_i\phi_v(n,p)-\Lambda\rho_v(n,p)$, $H=1/(1-\delta(1-\lambda))$ converts a one-period
+change in $\phi$ into its discounted effect on control through \eqref{eq:control}, $\Lambda=20$ is the cost a player
+assigns to one expected incident, and $\bar x$ counts ships on forced returns. The last constraint is the
+\textbf{escalation-risk budget}: its feasible region is exactly the set of allocations whose expected number of
+incidents stays below $\varepsilon_i$, tightened as $\ell$ rises. The proposal's ``conservative, moderate,
+aggressive'' types become $\varepsilon_i\in\{0.05,0.15,0.40\}$. We solve it with Gurobi, as in the lecture code.
+
+\textbf{Template game (Lectures 3--4).} To compute equilibria we abstract each player's strategy to one of 14
+templates: a split of deployable ships across North/Center/South (seven splits) times a posture (P or A).
+This gives a finite strategic-form game $\Gamma=\langle\I,(S_i),(u_i)\rangle$ with $|S_i|=14$ whose payoffs
+$M_i(a_\B,a_\Rd)=\sigma_i\sum_vV^i_v\phi_v-\Lambda\sum_v\rho_v$ are evaluated with \eqref{eq:control}--\eqref{eq:hazard}
+at steady state (calm seas, $\ell=1$). We analyze it with iterated elimination of strictly dominated strategies (IESDS),
+pure-NE enumeration, the maximin LP, and the correlated-equilibrium LP.
+
+\textbf{Policies.} \emph{random}; \emph{moderate} (rule-based: asserts only with local superiority);
+\emph{greedy} (fast MIP heuristic); \emph{MIP-BR}$(\varepsilon)$; \emph{equilibrium} (its part of a pure NE of
+$\Gamma$); \emph{maximin} (samples its maximin mixed strategy of $\Gamma$).
+
+\subsection{Resilient redesigns (Blue)}\label{sec:designs}
+Each changes the system, not the operating policy: \textbf{D1 dispersed basing} adds a Blue port at Subic
+(EDCA access) with edges to SCB, LUZ, STS (alternative paths and shorter cycles; cost 0.3/period);
+\textbf{D2 redundant sensing} gives Blue a detection floor of $0.6$ in every zone, also in bad weather
+(cost 0.5/period); \textbf{D3 crisis hotline} (CUES-style communication) raises the de-escalation probability to
+$\mu=0.5$ and halves assert hazards once $\ell\ge3$ (no cost to Blue, but it also helps Red).
+
+\textbf{Simplifying assumptions.} Two unitary players; control is a force-ratio index; incidents are the only
+path to war; beliefs are last-seen counts; best responses look one period ahead.
+
+%======================================================================
+\section{Preliminary results}
+%======================================================================
+\input{results.tex}
+
+%======================================================================
+\section{Prototype}
+%======================================================================
+\input{prototype.tex}
+
+%======================================================================
+\section{Plan for Workshop 2}
+%======================================================================
+\input{plan.tex}
+
+\begin{thebibliography}{99}\small\setlength{\itemsep}{0pt}
+\bibitem[Green et~al.(2017)]{green2017} Green, M., Hicks, K., Cooper, Z., Schaus, J., and Douglas, J. (2017).
+\emph{Countering Coercion in Maritime Asia: The Theory and Practice of Gray Zone Deterrence}. Center for Strategic and International Studies.
+\bibitem[Helmus et~al.(2024)]{helmus2024} Helmus, T. C., Romita Grocholski, K., Liggett, T., Rhoades, A. L., Savitz, S., and Palmer, K. (2024).
+\emph{Understanding and Countering China's Maritime Gray Zone Operations} (RR-A2954-1). RAND Corporation. \url{https://doi.org/10.7249/RRA2954-1}
+\bibitem[Schelling(1966)]{schelling1966} Schelling, T. C. (1966). \emph{Arms and Influence}. Yale University Press.
+\bibitem[Shieh et~al.(2012)]{shieh2012} Shieh, E., An, B., Yang, R., Tambe, M., Baldwin, C., DiRenzo, J., Maule, B., and Meyer, G. (2012).
+PROTECT: A deployed game theoretic system to protect the ports of the United States. In \emph{Proc.\ AAMAS 2012}, 13--20.
+\bibitem[Washburn and Wood(1995)]{washburn1995} Washburn, A., and Wood, K. (1995). Two-person zero-sum games for network interdiction. \emph{Operations Research}, 43(2), 243--251.
+\bibitem[Wasser et~al.(2019)]{wasser2019} Wasser, B., Oberholtzer, J., Pettyjohn, S. L., and Mackenzie, W. (2019).
+\emph{Gaming Gray Zone Tactics: Design Considerations for a Structured Strategic Game} (RR-2915-A). RAND Corporation. \url{https://doi.org/10.7249/RR2915}
+\bibitem[WPNS(2014)]{cues2014} Western Pacific Naval Symposium (2014). \emph{Code for Unplanned Encounters at Sea (CUES)}.
+\end{thebibliography}
+
+\end{document}
