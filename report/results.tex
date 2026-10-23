@@ -1,93 +1,66 @@
-\S4.1--4.2 are analytical (template game); the rest use 200 seeds per configuration, the same for every policy.
-Unless stated, Red plays MIP-BR with $\varepsilon_\Rd=0.15$ in nominal weather.
+Analytical results use the restricted template game. Simulations use the same 200 seed identifiers per
+configuration. Unless specified, Red uses MIP-BR with $\varepsilon_\Rd=0.15$ in nominal weather.
 
-\subsection{Small example: patrol or assert, and sustainable restraint}
-Fix the force splits that survive dominance (\S4.2): Blue center-heavy, Red south-heavy. Each side then only
-chooses P or A. The resulting $2\times2$ sub-matrix of $\Gamma$, normalized so (P,P) $=(0,0)$, has
-(P,A) $=(-9.61,\,1.20)$, (A,P) $=(0.28,\,-10.45)$ and (A,A) $=(-11.41,\,-11.33)$ (Blue, Red).
-Asserting against a patroller pays a little (one-period gain $G_\B=0.28$, $G_\Rd=1.20$), but mutual assertion costs more than
-patrolling alone, so $BR_i(\Pt)=\As$ and $BR_i(\As)=\Pt$: the same structure as the
-shared-compute example (Lecture 3). There are two pure NE, (A,P) and (P,A), and a mixed NE (Blue asserts w.p.\
-$0.58$, Red $0.13$) with mutual assertion w.p.\ $0.08$ and payoffs $v_\B=-1.25$, $v_\Rd=-6.06$. The welfare-maximizing correlated equilibrium (CE LP)
-puts $0.40$ on (P,P), $0.54$ on (A,P), $0.06$ on (P,A) and \emph{zero} on (A,A): a mediator (e.g.\ a hotline)
-removes mutual assertion.
+\subsection{Supporting analysis: incentives and repeated-game restraint}
+Fix Blue's center-heavy and Red's south-heavy splits. Normalizing $(P,P)$ to $(0,0)$ gives
+$(P,A)=(-9.61,1.20)$, $(A,P)=(0.28,-10.45)$ and $(A,A)=(-11.41,-11.33)$ (Blue, Red).
+This chicken-type game has two pure equilibria. In the mixed equilibrium, assertion probabilities are
+$0.576$ (Blue), $0.135$ (Red), with payoffs $v_\B=-1.30$, $v_\Rd=-6.02$.
+A welfare-maximizing correlated equilibrium avoids mutual assertion.
 
-In the repeated game (Lectures 5--6), consider grim trigger: both patrol; after any assertion, both play the
-mixed NE forever. By the one-stage deviation principle, patrolling is optimal iff
-$(1-\delta)G_i+\delta v_i\le0$, i.e.\ $\delta\ge G_i/(G_i-v_i)$, which is $0.18$ for Blue and $0.17$ for Red. With
-$\delta=0.98$, \textbf{mutual restraint is a subgame perfect equilibrium}, although our one-period-ahead policies
-cannot see this yet.
+In an \emph{infinitely repeated, perfectly monitored version of this fixed subgame}, patrol followed by
+permanent mixed-equilibrium punishment after any assertion is sustainable when
+$\delta\ge G_i/(G_i-v_i)$, with deviation gains $G_\B=0.28$, $G_\Rd=1.20$.
+Thresholds $0.18$ and $0.17$ support restraint at $\delta=0.98$ in this auxiliary game,
+not necessarily in the finite, partially observed simulator.
 
-\subsection{Template game: dominance, equilibria and the effect of the escalation cost}
-IESDS reduces $\Gamma$ from $14\times14$ to $2\times4$: Blue keeps only the center-heavy split (20\% North, 60\% Center, 20\% South),
-Red the south- or center/south-heavy splits. There are two pure NE: (Blue C-heavy assert, Red S-heavy patrol),
-payoffs $(0.39,-9.27)$, and (Blue C-heavy patrol, Red C/S assert), $(-14.44,2.71)$; the \emph{equilibrium} policy
-plays the first (higher total payoff; this selection is an assumption). Without the escalation cost, the zero-sum
-maximin LP has a pure equilibrium where \emph{both} sides concentrate on the Center and assert (value $-2.26$):
-the shared incident cost is what makes at most one side assert.
+\subsection{Template-game equilibria}
+Strict dominance reduces $14\times14$ templates to $2\times4$. Pure equilibria are (Blue center-heavy
+assert, Red south-heavy patrol), payoffs $(0.39,-9.27)$, and (Blue center-heavy patrol, Red center/south-heavy
+assert), $(-14.44,2.71)$. The tested policy selects the first by total payoff. A separate zero-sum control
+game (Red receives minus Blue control payoff) has both sides assert in the Center, value $-2.26$.
 
-\subsection{RQ1: control versus war risk, and the risk-budget game}
-\begin{figure}[!ht]
-\centering
+\subsection{RQ1: control, war risk and budget choices}
+\begin{figure}[H]\centering
 \begin{minipage}{0.40\textwidth}\centering
-\includegraphics[width=\textwidth,height=3.7cm,keepaspectratio]{figures/frontier.pdf}
+\includegraphics[width=\textwidth,height=3.3cm,keepaspectratio]{figures/frontier.pdf}
 \end{minipage}\hfill
-\begin{minipage}{0.54\textwidth}\centering\small
-\begin{tabular}{l|ccc}
-\toprule
-$\B\backslash\Rd$ & cons.\ $0.05$ & mod.\ $0.15$ & aggr.\ $0.40$\\\midrule
-cons.\ $0.05$ & $-194,\ 199$ & $-303,\ 315$ & $-308,\ 318$\\
-              & war $0.10$ & $0.11$ & $0.12$\\
-mod.\ $0.15$  & $18,\ -36$ & $-144,\ 101$ & $-192,\ 140$\\
-              & war $0.15$ & $0.20$ & $0.21$\\
-aggr.\ $0.40$ & $74,\ -80$ & $-83,\ 16$ & $\mathbf{-151,\ 39}$\\
-              & war $0.14$ & $0.25$ & $\mathbf{0.34}$\\
-\bottomrule
+\begin{minipage}{0.57\textwidth}\centering\small
+\begin{tabular}{@{}lccc@{}}\toprule
+$\B\backslash\Rd$ & $0.05$ & $0.15$ & $0.40$\\\midrule
+$0.05$ & $-194,199$ & $-303,315$ & $-308,318$\\
+& $0.10$ & $0.11$ & $0.12$\\
+$0.15$ & $18,-36$ & $-144,101$ & $-192,140$\\
+& $0.15$ & $0.20$ & $0.21$\\
+$0.40$ & $74,-80$ & $-83,16$ & $\mathbf{-151,39}$\\
+& $0.14$ & $0.25$ & $\mathbf{0.34}$\\\bottomrule
 \end{tabular}
 \end{minipage}
-\caption{Left: Blue's control share vs.\ war rate as Blue's risk budget $\varepsilon_\B$ grows (Red fixed at $0.15$).
-Right: the risk-budget game, $(u_\B,u_\Rd)$ and war rate when both sides choose $\varepsilon$ (s.e.\ $\approx 5$--$12$).
-Bold: the unique Nash equilibrium.}
-\label{fig:rq1}
+\caption{Left: control--war tradeoff with Red's budget fixed at $0.15$.
+Right: budget-game payoffs $(u_\B,u_\Rd)$ with war rates beneath; payoff s.e.\ approximately 13.
+Bold marks the pure equilibrium of the estimated payoff matrix.}\label{fig:rq1}
 \end{figure}
-\textbf{Frontier.} Raising $\varepsilon_\B$ from $0.02$ to $0.15$ lifts Blue's control share from $-0.25$ to
-$-0.05$ while the war rate rises from $0.07$ to $0.20$; going to $0.40$ adds only $0.06$ of control
-(Fig.~\ref{fig:rq1}). Most of what a looser budget buys is bought by $\varepsilon\approx0.15$--$0.25$.
+Raising Blue's budget from $0.02$ to $0.15$ lifts control from $-0.25$ to $-0.05$ and war rate from
+$0.07$ to $0.20$; $0.40$ adds only $0.06$ control. The estimated matrix has a unique pure equilibrium
+at $(0.40,0.40)$ and its highest war rate ($0.34$). Some comparisons ($318$ versus $315$) are within
+noise. A lower total payoff alone does not establish a prisoner's dilemma.
 
-\textbf{Risk-budget game.} When both sides pick a budget, ``aggressive'' is a best response to every opponent
-choice for both players (Red vs.\ conservative Blue, $318$ vs.\ $315$, is within noise), so (aggressive,
-aggressive) is the unique pure NE. It has the \emph{highest} war rate ($0.34$ vs.\ $0.10$ when both are
-conservative) and total payoff $-112$ vs.\ $+12$ at (conservative, moderate): a prisoner's dilemma (Lecture 3).
-So restraint must come from repetition or coordination (\S4.1).
-
-\subsection{RQ2: strategic versus heuristic play}
-\begin{table}[!ht]\centering\small
-\begin{tabular}{l|ccc|c}
-\toprule
-Blue $\backslash$ Red & rule-based (moderate) & MIP-BR & equilibrium & worst case over Red\\\midrule
-random & $-283$ / $-0.14$ / $0.15$ & $-319$ / $-0.16$ / $0.33$ & $-164$ / $-0.08$ / $0.06$ & $-319$\\
-rule-based (moderate) & $-122$ / $-0.05$ / $0.04$ & $-184$ / $-0.09$ / $0.06$ & $35$ / $+0.06$ / $0.04$ & $-184$\\
-greedy & $-70$ / $+0.01$ / $0.12$ & $-137$ / $-0.05$ / $0.14$ & $65$ / $+0.08$ / $0.03$ & $-137$\\
-MIP-BR & $-75$ / $+0.01$ / $0.13$ & $-144$ / $-0.05$ / $0.20$ & $53$ / $+0.08$ / $0.08$ & $-144$\\
-equilibrium & $-72$ / $-0.01$ / $0.07$ & $\mathbf{-116}$ / $-0.03$ / $0.10$ & $21$ / $+0.05$ / $0.06$ & $\mathbf{-116}$\\
-maximin & $-170$ / $-0.09$ / $0.04$ & $-221$ / $-0.12$ / $0.08$ & $-35$ / $-0.01$ / $0.00$ & $-221$\\
-\bottomrule
+\subsection{RQ2: performance against common opponents}
+\begin{table}[H]\centering\small
+\begin{tabular}{@{}lrrrr@{}}\toprule
+Blue policy & Red rule-based & Red MIP-BR & Red equilibrium & Worst tested payoff\\\midrule
+Random & $-283$ & $-319$ & $-164$ & $-319$\\
+Rule-based & $-122$ & $-184$ & $35$ & $-184$\\
+Greedy & $-70$ & $-137$ & $65$ & $-137$\\
+MIP-BR & $-75$ & $-144$ & $53$ & $-144$\\
+Equilibrium & $-72$ & $\mathbf{-116}$ & $21$ & $\mathbf{-116}$\\
+Maximin & $-170$ & $-221$ & $-35$ & $-221$\\\bottomrule
 \end{tabular}
-\caption{Blue payoff $u_\B$ / control share / war rate (s.e.\ of $u_\B$ is 1--7). Nominal weather, design D0.}
-\label{tab:policies}
+\caption{Blue payoff under nominal weather, baseline D0; reported s.e.\ 1--7.
+Control and war-rate results for every matchup remain in the repository's policy results.}\label{tab:policies}
 \end{table}
-Greedy, MIP-BR and equilibrium beat the random and rule-based benchmarks (Table~\ref{tab:policies}). The
-\textbf{equilibrium} policy has the best worst case over Red's policies ($-116$) and, against MIP-BR, half the war
-rate of MIP-BR itself ($0.10$ vs.\ $0.20$). Greedy and MIP-BR do best against weaker opponents but escalate more.
-\textbf{Maximin} is the safest (war rate $\le0.08$) but gives up the most control: it guards against a worst-case
-Red template that Red rarely plays.
-
-\textbf{MIP vs.\ greedy.} Over 1{,}524 Blue decisions in 30 games the greedy heuristic matched the MIP optimum
-in 67\% of decisions but broke the risk budget in 14\%, so the MIP is needed to enforce the feasible region
-exactly; in play the two perform about the same.
-
-\subsection{RQ3: robustness to weather and resilient designs}
-\input{results_rq3.tex}
-
-\textbf{Limitations.} Parameters are assumptions; policies look one period ahead; the war rate depends strongly on
-$h$, $\mu$ and $W$; payoff differences below about 20 are ties (s.e.\ 5--12).
+Against Red MIP-BR, the equilibrium-derived policy improves control from $-0.05$ to $-0.03$ and halves
+war rate ($0.20$ to $0.10$) relative to Blue MIP-BR. Its best worst payoff covers only the tested opponents.
+Maximin has lower payoff but war rates at most $0.08$. Across 1,524 decisions, greedy matched the MIP
+optimum in 67\%. Over those 30 games, greedy exceeded the risk allowance in 208 decisions (14\%)
+and MIP in 37 (2.4\%), consistent with its penalized slack.
