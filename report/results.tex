@@ -1,3 +1,4 @@
+% !TEX root = report.tex
 \S4.1--4.2 are analytical (template game); the rest use 200 seeds per configuration, the same for every policy.
 Unless stated, Red plays MIP-BR with $\varepsilon_\Rd=0.15$ in nominal weather.
 
@@ -50,11 +51,11 @@ Right: the risk-budget game, $(u_\B,u_\Rd)$ and war rate when both sides choose 
 Bold: the unique Nash equilibrium.}
 \label{fig:rq1}
 \end{figure}
-\textbf{Frontier.} Raising $\varepsilon_\B$ from $0.02$ to $0.15$ lifts Blue's control share from $-0.25$ to
+\textbf{Frontier:} Raising $\varepsilon_\B$ from $0.02$ to $0.15$ lifts Blue's control share from $-0.25$ to
 $-0.05$ while the war rate rises from $0.07$ to $0.20$; going to $0.40$ adds only $0.06$ of control
 (Fig.~\ref{fig:rq1}). Most of what a looser budget buys is bought by $\varepsilon\approx0.15$--$0.25$.
 
-\textbf{Risk-budget game.} When both sides pick a budget, ``aggressive'' is a best response to every opponent
+\textbf{Risk-budget game:} When both sides pick a budget, ``aggressive'' is a best response to every opponent
 choice for both players (Red vs.\ conservative Blue, $318$ vs.\ $315$, is within noise), so (aggressive,
 aggressive) is the unique pure NE. It has the \emph{highest} war rate ($0.34$ vs.\ $0.10$ when both are
 conservative) and total payoff $-112$ vs.\ $+12$ at (conservative, moderate): a prisoner's dilemma (Lecture 3).
@@ -82,12 +83,12 @@ rate of MIP-BR itself ($0.10$ vs.\ $0.20$). Greedy and MIP-BR do best against we
 \textbf{Maximin} is the safest (war rate $\le0.08$) but gives up the most control: it guards against a worst-case
 Red template that Red rarely plays.
 
-\textbf{MIP vs.\ greedy.} Over 1{,}524 Blue decisions in 30 games the greedy heuristic matched the MIP optimum
+\textbf{MIP vs.\ greedy:} Over 1{,}524 Blue decisions in 30 games the greedy heuristic matched the MIP optimum
 in 67\% of decisions but broke the risk budget in 14\%, so the MIP is needed to enforce the feasible region
 exactly; in play the two perform about the same.
 
 \subsection{RQ3: robustness to weather and resilient designs}
 \input{results_rq3.tex}
 
-\textbf{Limitations.} Parameters are assumptions; policies look one period ahead; the war rate depends strongly on
+\textbf{Limitations:} Parameters are assumptions; policies look one period ahead; the war rate depends strongly on
 $h$, $\mu$ and $W$; payoff differences below about 20 are ties (s.e.\ 5--12).
