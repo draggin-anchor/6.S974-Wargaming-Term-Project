@@ -94,19 +94,22 @@ Prof.\ Sapsis: add external uncertainty (weather) and test robustness & Sea stat
 %======================================================================
 \section{Literature and current practice}
 %======================================================================
-\textbf{Documented practice:} \citet{helmus2024} catalog China's gray-zone tactics: persistent CCG and militia
-presence, shadowing, blocking resupply at Second Thomas Shoal, water cannon, and non-navy hulls that stay below
-the threshold of armed response. \citet{green2017} argue that deterrence below war depends on presence and on
-managing escalation. U.S.\ practice is routine presence and freedom-of-navigation patrols, with encounters managed
-by the Code for Unplanned Encounters at Sea \citep{cues2014}. We take from these the action set (presence,
-patrol vs.\ assert), the asymmetric hull types, and the idea that incidents, not shots, drive escalation.
-\textbf{Models:} \citet{wasser2019} design a seminar gray-zone game with explicit objectives and action menus;
-we make every adjudication rule computable. The U.S.\ Coast Guard schedules randomized patrols from a game model
-\citep{shieh2012}; zero-sum network games model transit and blockade \citep{washburn1995}; escalation as a shared,
-manipulated risk \citep{schelling1966} is what our incident hazard makes explicit.
-\textbf{What we add:} a general-sum game where both sides contest control at once and war is a joint cost,
-with explicit rules so strategies and designs can be compared over thousands of runs. Numerical values are our
-assumptions (Table~\ref{tab:params}), not documented data.
+\textbf{Documented practice:} 
+\citet{helmus2024} describe China’s use of coast guard and maritime militia vessels to 
+maintain presence and obstruct maritime activities while seeking to avoid a conventional military response. 
+\citet{green2017} emphasize credible commitments, coordinated allied responses, and acceptance of calculated escalation risk while exercising restraint.
+U.S.\ practice is defined by routine presence and freedom-of-navigation patrols, with encounters managed
+by the Code for Unplanned Encounters at Sea \citep{cues2014}. From these sources, we define the action set (presence,
+patrol, and assert), the asymmetric hull types, and the idea that incidents drive escalation, not shots.
+
+\textbf{Models:} 
+\citet{wasser2019} developed a structured, gray-zone game with explicit objectives and probabilistic adjudication; our model builds on that idea by using 
+fully automated rules to support repeated simulation and strategy comparison. \citet{shieh2012} document a deployed Stackelberg model for randomized Coast Guard port patrols. 
+\citep{washburn1995} model maritime interdiction and routing as zero-sum games. \citep{schelling1966} represents escalation as a shared,
+manipulated risk, which motivated our explicit incident hazard.
+
+\textbf{What we add:} We combine maritime allocation, evolving control, and shared escalation risk in a general sum game where both sides contest control simultaneously and war costs both. Computational rules support comparisons of strategies and designs across thousands of runs. Numerical parameters are our
+assumptions (Table~\ref{tab:params}), not values derived from documented literature.
 
 %======================================================================
 \section{Game formulation}
