@@ -1,7 +1,7 @@
 # Workshop 1 presenter notes and Q&A
 
 **Talk:** Tue 2026-10-27. 10 minutes + 2 minutes of questions. 12 slides.
-**Synced to:** the paper and the deck as of Mon 2026-10-26, 7:30 PM ET. This includes all changes Sean accepted today. LCS are removed, §1 and the RQ wording are new, weather is now stylized scenarios, the fuel budget is now a movement budget, the ship index is j, and §3.6, §4.1 and §4.2 are revised.
+**Synced to:** the paper and the deck as of Mon 2026-10-26, 7:45 PM ET, when Sean finished his paper review. This includes all changes Sean accepted today. LCS are removed, §1 and the RQ wording are new, weather is now stylized scenarios, the fuel budget is now a movement budget, the ship index is j, and §3.6, §4.1 and §4.2 are revised.
 
 Part 1 is the game formulation in plain words, so any of the three of you can answer questions on it. Part 2 is the slide-by-slide script with timings. Part 3 is the likely Q&A. Part 4 is the sources for any claim about real U.S. or Chinese behavior.
 
@@ -186,9 +186,9 @@ The current speaker notes add up to about 11.5 minutes. The timings below fit 10
 
 **10. RQ3 (1:00).** Robustness means two things here. One is expected payoff over the four weather scenarios. The other is the worst case. The ranking holds. The top two plans stay on top in every scenario. Bad weather slightly helps Blue because rough seas weaken Red's coast-guard hulls and storms pause incidents. Of the redesigns, de-escalation measures (D3) are best on average and in the worst case, and they cut war from 20% to 5%. The caveat is that they have no cost yet and help Red too, so it is a joint gain.
 
-**11. Evidence (0:35).** Left is what the runs support. Right is what they do not. Values are assumptions, policies look one turn ahead, the war rate depends heavily on a few parameters, and the de-escalation result is partly built in. A sensitivity sweep is first for Workshop 2.
+**11. Evidence (0:35).** Left is what the runs support. Right is what they do not. Values are assumptions, policies look one turn ahead, the war rate depends heavily on a few parameters, and the de-escalation result is partly built in. A sensitivity analysis is first for Workshop 2.
 
-**12. Workshop 2 (0:30).** On Nov 3 we add Bayesian beliefs, weather tied to the calendar (typhoon season, winter monsoon) with odds from climate records, and the three coded Red attacks, and we decide whether to keep the movement budget. On Nov 17 we add learning agents. On Dec 1 we test redesigns under attack and long typhoons, with a cost for de-escalation measures. The final report is due Dec 8. Thank you. We are happy to take questions.
+**12. Workshop 2 (0:30).** First comes a sensitivity analysis on the zone values, hazards, war penalty and cool-down rate. Then we add Bayesian beliefs and calendar-based weather from real data, and we reformulate the movement budget with oilers in mind. Next come learning agents, three Red attacks and Blue's defenses. Last, we test the redesigns under attack, with a cost for de-escalation measures. Thank you. We are happy to take questions.
 
 ---
 
@@ -220,7 +220,10 @@ Day-to-day gray-zone presence is both sides adjusting at once, each without full
 A finite-horizon dynamic game with chance moves (weather, incidents) and imperfect information. Players decide at information sets that do not reveal the opponent's current positions. It is general-sum because both pay the war penalty.
 
 **★ Q6. Where do the numbers come from?**
-They are our assumptions. There is no public data for most of them, and the instructors said to propose reasonable values. Hazards and μ were set so war is uncommon but not rare, so the risk trade-off is measurable. Every value is in Table 1. A ±50% sweep on V, h, W and μ is the first Workshop 2 task.
+They are our assumptions. There is no public data for most of them, and the instructors said to propose reasonable values. Hazards and μ were set so war is uncommon but not rare, so the risk trade-off is measurable. Every value is in Table 1. A sensitivity analysis on V, h, W and μ is the first Workshop 2 task (Q6a).
+
+**Q6a. What is the sensitivity analysis?**
+We rerun the experiments with the zone values V, the hazards h, the war penalty W (100 and 300) and the cool-down rate μ (0.125 and 0.375) each set 50% lower and 50% higher. Then we check whether the three headline results survive. Those are both sides choosing aggressive in the risk-budget game, the Nash plan having the best worst case, and de-escalation measures winning.
 
 **Q7. Why is war reached only through incidents? States can choose war.**
 It is a stated simplification. We study the gray zone below the threshold, and deliberate escalation is outside this model. Incidents driving escalation follows Schelling's idea of shared, manipulated risk.
@@ -232,7 +235,7 @@ One period (2 days) with no incident anywhere in the theater. After each quiet p
 Coast guard and militia hulls are smaller and lightly armed, so they count as 0.6 of a warship. In rough seas small hulls lose effectiveness, so they count 0.3. That rough-sea effect is why bad weather helps Blue slightly.
 
 **Q8a. Red has 14 hulls, so why is F_R = 10?**
-F is a movement budget, not a fleet size. It is the most ship moves (one move = sailing one edge) a side can make per period across the theater. Each ship's own fuel is its endurance d_j. In the paper's words, the theater-wide movement budget "stands in for operational requirements and station-keeping". That is our interpretation, not documented practice. Ships that stay put use none, and forced returns are charged first. So at most 10 of Red's 14 hulls and 8 of Blue's 10 DDGs can reposition in one period, and neither side can shift its whole fleet at once. The values are our assumptions. Workshop 2 will decide whether to keep it or drop it. The per-move cost γ in the payoff is still a fuel cost.
+F is a movement budget, not a fleet size. It is the most ship moves (one move = sailing one edge) a side can make per period across the theater. Each ship's own fuel is its endurance d_j. In the paper's words, the theater-wide movement budget "stands in for operational requirements and station-keeping". That is our interpretation, not documented practice. Ships that stay put use none, and forced returns are charged first. So at most 10 of Red's 14 hulls and 8 of Blue's 10 DDGs can reposition in one period, and neither side can shift its whole fleet at once. The values are our assumptions. Workshop 2 will reformulate it with oilers (refueling ships) in mind. The per-move cost γ in the payoff is still a fuel cost.
 
 **Q9. Why is PLAN assertion more escalatory than CCG assertion?**
 Using coast guard and militia is how China applies pressure while trying to avoid a military response (Helmus et al. 2024). So pressure from CCG hulls carries a lower hazard (0.012) than from navy ships (0.036).
@@ -276,7 +279,7 @@ Each game runs under one scenario ω. The weights π_ω (0.25 / 0.40 / 0.25 / 0.
 It is frozen and still scored. The control update is skipped, so the zone keeps its pre-storm value. There are no incidents. The stage payoff still counts V·c every storm period. For example, Blue at c = 0.4 in the Senkakus keeps earning 6 × 0.4 per period. In the MIP, storm-zone options score φ = ρ = 0 because nothing a player does can change that zone this turn (no entry, and ships inside stay). It is not because the zone goes unscored.
 
 **Q17b. Are these real seasons?**
-No. They are four stylized weather scenarios, not calendar seasons. In reality, typhoons in the western North Pacific peak around August and September (NOAA). The winter northeast monsoon (about November to March) brings persistent rough seas in the Taiwan and Luzon Straits (Hong Kong Observatory). Workshop 2 will add scenarios tied to the calendar, with odds taken from climate records.
+No. They are four stylized weather scenarios, not calendar seasons. In reality, typhoons in the western North Pacific peak around August and September (NOAA). The winter northeast monsoon (about November to March) brings persistent rough seas in the Taiwan and Luzon Straits (Hong Kong Observatory). Workshop 2 will add calendar-based weather from real data.
 
 ### C. Decision rules and solution concepts
 
@@ -413,10 +416,13 @@ Shorter trips to the South let Blue contest Red's valuable southern zones, which
 `Game.step` is the 7-step timeline with the control, hazard and payoff equations. `MIPBRPolicy` builds and solves the MIP each turn. `MetaGame` builds the template game and runs dominance, Nash enumeration and both LPs. `experiments.py all` regenerates every number in the report.
 
 **Q35. What will learning add?**
-In Workshop 2 we add a Red that learns from repeated play, and fictitious-play or no-regret updates on the template game. The question is whether they converge or cycle, drift toward restraint or assertion, and exploit predictable Blue play. (Present these only as plans. We have not built them yet.)
+In Workshop 2 we add learning agents, such as a Red that adapts over repeated play. The question is whether they converge or cycle, drift toward restraint or assertion, and exploit predictable Blue play. Say "other learning methods" as the paper does. Name fictitious play or no-regret learning only if asked which ones. (Present these only as plans. We have not built them yet.)
 
 **Q36. What attacks will you test?**
-Three are already coded. One is a CCG blockade of Blue's routes at Scarborough and Second Thomas. One is jamming of Blue sensing. One is false contacts. The defenses are randomized patrols, D1 and D2.
+Three are already coded. In the blockade, Blue cannot pass through Scarborough or Second Thomas while Red's coast guard asserts there. In jamming, Blue's detection is halved in one region from period 20 to 40. In deception, Blue sees 2 phantom contacts each period. The defenses are randomized patrols, D1 and D2.
+
+**Q36a. Did you use AI tools?**
+Yes, and the paper says how in the AI-usage statement after the references. Point to it.
 
 ### F. Real-world grounding (cite if pressed; see Part 4)
 
