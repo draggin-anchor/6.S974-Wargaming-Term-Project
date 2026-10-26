@@ -78,7 +78,7 @@ One Blue DDG meets one Red CCG hull, calm seas, ℓ = 1, control starts at 0.
 ### Blue redesigns (§3.8)
 - **D1 extra port:** Subic Bay (EDCA access), linked to Scarborough, Luzon, Second Thomas. Cost 0.3/period. Structural change.
 - **D2 extra surveillance:** Blue detects in every zone with probability ≥ 0.6, even in bad weather. Cost 0.5/period.
-- **D3 crisis hotline (CUES-style):** at ℓ ≥ 3, a quiet period lowers ℓ with probability 0.5 instead of 0.25, and assert hazards are halved. **No cost yet** and it helps Red as much as Blue.
+- **D3 de-escalation measures** (hotline plus CUES-style encounter rules): at ℓ ≥ 3, a quiet period lowers ℓ with probability 0.5 instead of 0.25, and assert hazards are halved. **No cost yet** and it helps Red as much as Blue.
 
 ### Simplifying assumptions (say these before someone else does)
 Two unitary players (no allies as players); control is a force-ratio index; incidents are the only path to war; beliefs are last-seen counts; best responses look one period ahead; every number is an assumption.
@@ -169,7 +169,7 @@ Current speaker notes add up to about 11.5 minutes. The timings below fit 10:00.
 
 **5. How the players decide (0:50).** Left: each turn a player solves a MIP with a cap ε on expected incidents. That answers the feedback that Q1 is a feasible region. Middle: to find equilibria we shrink each side to 14 templates and solve that 14 × 14 game exactly with dominance, Nash equilibrium and the two LPs. Right: the six policies; all see the same random draws.
 
-**6. Small example (1:00).** Fix where ships go; each side only picks patrol or assert. Asserting against a patroller pays a little; if both assert, both lose more than 11. So the best reply is the opposite of the other side, which makes it an anti-coordination game: two pure equilibria and a mixed one with mutual assertion 8% of the time. Two fixes: the best correlated equilibrium never recommends both asserting, which a mediator such as a hotline can implement; and in the repeated game, grim trigger (both patrol; after any assertion, both play the mixed equilibrium forever) makes mutual patrol a subgame perfect equilibrium for any discount factor above 0.18. Ours is 0.98.
+**6. Small example (1:00).** Fix where ships go; each side only picks patrol or assert. Asserting against a patroller pays a little; if both assert, both lose more than 11. So the best reply is the opposite of the other side, which makes it an anti-coordination game: two pure equilibria and a mixed one with mutual assertion 8% of the time. Two fixes: the best correlated equilibrium never recommends both asserting, which a mediator, such as de-escalation measures, can implement; and in the repeated game, grim trigger (both patrol; after any assertion, both play the mixed equilibrium forever) makes mutual patrol a subgame perfect equilibrium for any discount factor above 0.18. Ours is 0.98.
 
 **7. Prototype (0:45, or a live demo of the same length).** Pick a plan for each side, a design and the weather; Step or Play. Zone color is control; letters count ships; thick outline = asserting; orange ring = incident; shading = bad weather; bottom left is the escalation ladder, 5 is war. "Run many games" plays the same setup as many simulated games and reports averages. One script reproduces every number in the report.
 
@@ -177,11 +177,11 @@ Current speaker notes add up to about 11.5 minutes. The timings below fit 10:00.
 
 **9. RQ2 (0:50).** Each Blue policy plays three Red policies, 200 games each; the bar is Blue's payoff against its worst opponent. The Nash equilibrium plan has the best worst case, −116, and half the war rate of the MIP best response against the same Red (10% vs 20%). Best responses do well against weak opponents but escalate. Safety-first is cautious but gives up control. Gaps under about 20 points are noise.
 
-**10. RQ3 (1:00).** Robustness means two things here: expected payoff over the four weather scenarios, and worst case. The ranking holds: the top two plans stay on top in every scenario. Bad weather slightly helps Blue because rough seas weaken Red's coast-guard hulls and storms pause incidents. Of the redesigns, the hotline is best on average and in the worst case and cuts war from 20% to 5%. Caveat: no cost yet, and it helps Red too, so it is a joint gain.
+**10. RQ3 (1:00).** Robustness means two things here: expected payoff over the four weather scenarios, and worst case. The ranking holds: the top two plans stay on top in every scenario. Bad weather slightly helps Blue because rough seas weaken Red's coast-guard hulls and storms pause incidents. Of the redesigns, de-escalation measures (D3) are best on average and in the worst case and cuts war from 20% to 5%. Caveat: no cost yet, and it helps Red too, so it is a joint gain.
 
-**11. Evidence (0:35).** Left is what the runs support. Right is what they do not: values are assumptions, policies look one turn ahead, the war rate depends heavily on a few parameters, and the hotline result is partly built in. A sensitivity sweep is first for Workshop 2.
+**11. Evidence (0:35).** Left is what the runs support. Right is what they do not: values are assumptions, policies look one turn ahead, the war rate depends heavily on a few parameters, and the de-escalation result is partly built in. A sensitivity sweep is first for Workshop 2.
 
-**12. Workshop 2 (0:30).** Nov 3 Bayesian beliefs, weather tied to the calendar (typhoon season, winter monsoon) with odds from climate records, the three coded Red attacks, and a decision on whether to keep the movement budget or drop it; Nov 17 learning agents; Dec 1 redesigns under attack and long typhoons, with a cost for the hotline; Dec 8 final report. Thank you; happy to take questions.
+**12. Workshop 2 (0:30).** Nov 3 Bayesian beliefs, weather tied to the calendar (typhoon season, winter monsoon) with odds from climate records, the three coded Red attacks, and a decision on whether to keep the movement budget or drop it; Nov 17 learning agents; Dec 1 redesigns under attack and long typhoons, with a cost for de-escalation measures; Dec 8 final report. Thank you; happy to take questions.
 
 ---
 
@@ -219,7 +219,7 @@ They are our assumptions; there is no public data for most of them, and the inst
 A stated simplification. We study the gray zone below the threshold; deliberate escalation is outside this model. Incidents driving escalation follows Schelling's idea of shared, manipulated risk.
 
 **Q7a. What is a "quiet period"?**
-One period (2 days) with no incident anywhere in the theater. After each quiet period, ℓ drops one level with probability μ = 0.25. So on average it takes 4 quiet periods (about 8 days) per level, and about 24 days without incidents to get from ℓ = 3 back to calm. Any incident raises ℓ immediately. With the hotline (D3), μ = 0.5 at ℓ ≥ 3, so about 4 days per level up there. The design choice is that crises start fast and cool slowly. μ is our assumption.
+One period (2 days) with no incident anywhere in the theater. After each quiet period, ℓ drops one level with probability μ = 0.25. So on average it takes 4 quiet periods (about 8 days) per level, and about 24 days without incidents to get from ℓ = 3 back to calm. Any incident raises ℓ immediately. With de-escalation measures (D3), μ = 0.5 at ℓ ≥ 3, so about 4 days per level up there. The design choice is that crises start fast and cool slowly. μ is our assumption.
 
 **Q8. Why does a CCG hull count less than a navy ship, and less in rough seas?**
 Coast guard and militia hulls are smaller and lightly armed, so 0.6 of a warship, and 0.3 in rough seas where small hulls lose effectiveness. That rough-sea effect is why bad weather helps Blue slightly.
@@ -331,6 +331,9 @@ Gurobi solves it exactly. We compared it to the greedy heuristic over 1,524 Blue
 **Q23. How does the template game relate to the full game?**
 If both sides held a template, control would settle at c = φ. Template payoffs are that settled control minus incident cost, in calm seas at ℓ = 1. It is an approximation used to compute equilibria; the simulations then test those plans in the full game.
 
+**Q22a. What is IESDS?**
+Iterated elimination of strictly dominated strategies. Cross out any template that another template beats against every opponent choice, then repeat, since each removal can make new templates dominated. Every Nash equilibrium lies in what survives. In our template game it cuts 14 × 14 down to 2 × 4: Blue keeps only center-heavy (20/60/20, patrol or assert), and Red keeps south-heavy (20/20/60) and center/south (20/40/40), each with patrol or assert. That is why the slide 6 example fixes Blue center-heavy and Red south-heavy and varies only the posture.
+
 **Q23a. The template game uses fractional hulls. Isn't that unrealistic?**
 Yes. It is a known simplification: templates spread 70% of each fleet evenly over a region's zones, which can leave fractions of a ship in a zone. The full simulation always moves whole ships, but the template game sets which plan the Nash equilibrium and Safety-first policies play. A quick whole-ship check (rounding to Blue 7 DDG, Red 6 PLAN + 4 CCG; not in the paper) changes which side asserts in equilibrium: dominance leaves a single pure equilibrium, Blue center-heavy patrol vs. Red south-heavy assert, instead of the paper's two. So removing fractional hulls is first on our Workshop 2 list.
 
@@ -369,8 +372,11 @@ Standard errors of the averages are 5–12 payoff points. We treat gaps under ab
 **★ Q31. Why does the Nash plan beat the MIP best response?**
 Our reading (not yet tested separately): the MIP best response looks one turn ahead and reacts to last-seen beliefs, so it escalates more (20% war vs 10%). The Nash plan commits to a center-heavy split and backs off to patrol when tension passes ℓ = 3. Its worst case over Red's policies is the best: −116.
 
-**★ Q32. The hotline is free. Isn't its win built in?**
-Partly, yes, and we say so. It also raises Red's payoff (101 to 144) because fewer wars help both. Workshop 2 prices it. The result is still informative: the hotline is a real-world version of the mediator from the correlated-equilibrium example.
+**★ Q32. De-escalation measures (D3) are free. Isn't their win built in?**
+Partly, yes, and we say so. It also raises Red's payoff (101 to 144) because fewer wars help both. Workshop 2 prices it. The result is still informative: D3 is a real-world version of the mediator from the correlated-equilibrium example.
+
+**Q32a. Why call D3 "de-escalation measures"?**
+It does two things. Once ℓ ≥ 3, a quiet period lowers ℓ with probability 0.5 instead of 0.25; that is the hotline-like part, like the U.S.–China Defense Telephone Link set up in 2008. And assert hazards are halved; that is the CUES-like part, meaning agreed encounter rules and bridge-to-bridge communication. It is bilateral and helps Red too, so "de-escalation measures" covers both effects.
 
 **Q33. Why does the extra port (D1) hurt Red but not help Blue much?**
 Shorter trips to the South let Blue contest Red's valuable southern zones, which costs Red (101 to 16), but more contact means more incidents (war 28%), which eats Blue's gain.
@@ -395,7 +401,7 @@ Yes, in kind. China uses coast guard and maritime militia to keep presence and o
 Wasser et al. (2019) built a structured gray-zone game with explicit objectives and probabilistic adjudication; we automate every rule, so thousands of runs can compare strategies. PROTECT (Shieh et al. 2012) is a deployed leader–follower model for Coast Guard port patrols, and Washburn and Wood (1995) model network interdiction as a two-person zero-sum game. Ours is general-sum with simultaneous moves: both sides contest control, and war costs both. The incident hazard follows Schelling's (1966) idea of escalation as a shared risk that each side manipulates.
 
 ### If you only get two questions
-Have Q6 (numbers are assumptions), Q18 (MIP-BR vs equilibrium), Q26 (restraint vs aggressive), Q28 (war rate) and Q32 (free hotline) ready. They are the obvious weak spots.
+Have Q6 (numbers are assumptions), Q18 (MIP-BR vs equilibrium), Q26 (restraint vs aggressive), Q28 (war rate) and Q32 (free de-escalation measures) ready. They are the obvious weak spots.
 
 ---
 
@@ -411,4 +417,5 @@ Have Q6 (numbers are assumptions), Q18 (MIP-BR vs equilibrium), Q26 (restraint v
 - Defense News (Sept 21, 2022). Satellite images reveal Chinese expansion of submarine base. https://www.defensenews.com/naval/2022/09/21/satellite-images-reveal-chinese-expansion-of-submarine-base/
 - NOAA AOML Hurricane Research Division, Tropical Cyclone FAQ G1 (when is hurricane/typhoon season). https://www.aoml.noaa.gov/hrd/tcfaq/G1.html
 - Hong Kong Observatory, Winter monsoon. https://www.weather.gov.hk/en/education/weather/monsoons/00070-winter-monsoon-from-the-perspective-of-strong-monsoon-signal.html
+- Arms Control Association (April 2008). Hotline to link U.S.-Chinese militaries. https://www.armscontrol.org/act/2008-04/hotline-link-us-chinese-militaries
 - U.S. Indo-Pacific Command (2024). DoD releases Fiscal Year 2023 Freedom of Navigation Report. https://www.pacom.mil/Media/News/Spotlight/Article/3771243/dod-releases-fiscal-year-2023-freedom-of-navigation-report/
