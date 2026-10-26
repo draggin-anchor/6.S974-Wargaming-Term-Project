@@ -83,6 +83,16 @@ One Blue DDG meets one Red CCG hull, calm seas, ℓ = 1, control starts at 0.
 ### Simplifying assumptions (say these before someone else does)
 Two unitary players (no allies as players); control is a force-ratio index; incidents are the only path to war; beliefs are last-seen counts; best responses look one period ahead; every number is an assumption.
 
+### On the slides but no longer in the 5-page paper
+The paper was cut to 5 pages on 10/26, with no numbers changed. If asked "where is that in the report?", these are now only on the slides or in these notes:
+- **Theater map and GUI screenshot** (slides 2 and 7). The paper has no figures now.
+- **RQ1 frontier** (slide 8, left): raising Blue's budget ε from 0.02 to 0.15 lifts Blue's control share from −0.25 to −0.05, while war rises from 7% to 20%; going to 0.40 adds only 0.06 more control.
+- **RQ3 policy-by-weather chart** (slide 10, left).
+- **Correlated equilibrium of the 2 × 2** (slide 6): 0.40 on (patrol, patrol), 0.54 on (Blue asserts, Red patrols), 0.06 on (Blue patrols, Red asserts), 0 on (assert, assert).
+- **Common random numbers** (same seeds and weather for every policy), **maximin's definition**, and the **full β derivation**: see Q30c, the policies bullet above, and Q21.
+
+**Paper section map now:** §4.1 small example plus template game; §4.2 RQ1 (Table 3, risk-budget game); §4.3 RQ2 (Table 4, policies); §4.4 RQ3 (Table 5, designs).
+
 ### Notation cheat sheet (full Table 1)
 The paper now keeps only the parameter half of Table 1. Both halves are here. A printable copy is `02-workshop1-notation-table.pdf`, stored next to these notes.
 
