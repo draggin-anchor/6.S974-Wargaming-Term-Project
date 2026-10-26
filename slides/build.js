@@ -270,7 +270,7 @@ plan.forEach((p, i) => {
   T(s, p[1], { x, y: 2.55, w: 2.8, h: 0.45, fontSize: 18, bold: true, color: C.text2 });
   T(s, p[2], { x, y: 3.05, w: 2.8, h: 2.8, fontSize: 15, valign: "top" });
 });
-takeaway(s, "Each step follows the remaining course modules: learning, attacks and defenses, resilient design.");
+takeaway(s, "Next: learning, attacks and defenses, and resilient design, in that order.");
 s.addNotes("(~45 s) Workshop 2 follows the remaining course modules. First, Bayesian beliefs, weather scenarios tied to the calendar with odds from climatology data, and the three Red attacks already coded; we also decide whether to keep the theater-wide movement budget, which stands in for operational requirements and station-keeping. Then learning agents, once taught: does a learning Red exploit predictable Blue play? Then redesigns under attack and long typhoons, with a cost for the hotline. Final report December 8. Thank you; happy to take questions.");
 
 (async () => {
