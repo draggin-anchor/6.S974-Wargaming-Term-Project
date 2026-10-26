@@ -255,6 +255,9 @@ Lecture 1's approach: the weather scenario ω is a chance move with weights, and
 **★ Q17a. How does the weather work (Table 2)?**
 Each game runs under one scenario ω. The weights π_ω (0.25 / 0.40 / 0.25 / 0.10) are used only to average results in RQ3; the worst case ignores them. Each period, each region (North, Center, South) not already in a storm gets one with probability p_s. A storm lasts 3 periods (6 days), closes the region's zones, stops incidents there and freezes control. Otherwise the sea is rough with probability p_r, which halves CCG strength and cuts detection to 70%; if neither happens, it is calm. Long-run share of time a region spends in storm / rough seas: calm 0% / 0%, nominal about 6% / 19%, typhoon about 15% / 30%, extreme about 26% / 37%. All values are our assumptions, chosen to span "no weather" to "very bad weather"; they are not climate data.
 
+**Q17c. In a storm, is control frozen or just not scored?**
+Both frozen and still scored. The control update is skipped, so the zone keeps its pre-storm value; there are no incidents; and the stage payoff still counts V·c every storm period. For example, Blue at c = 0.4 in the Senkakus keeps earning 6 × 0.4 per period. In the MIP, storm-zone options score φ = ρ = 0 because nothing a player does can change that zone this turn (no entry, ships inside stay), not because the zone goes unscored.
+
 **Q17b. Are these real seasons?**
 No. They are four stylized weather scenarios, not calendar seasons. In reality, typhoons in the western North Pacific peak around August–September (NOAA), and the winter northeast monsoon (about November–March) brings persistent rough seas in the Taiwan and Luzon Straits (Hong Kong Observatory). Workshop 2 will add scenarios tied to the calendar, with odds taken from climate records.
 
