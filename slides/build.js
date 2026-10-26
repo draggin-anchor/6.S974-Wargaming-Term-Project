@@ -65,43 +65,44 @@ s = content("Introduction", "The problem: control without war");
 img(s, "network.png", 0.6, 1.35, 4.9, 4.33);
 T(s, "Network of 8 contested zones and 4 home ports", { x: 0.6, y: 5.75, w: 4.9, h: 0.3, fontSize: 12, color: C.accent5, italic: true });
 bullets(s, [
-  [{ text: "Players. ", options: { bold: true, color: C.accent1 } }, { text: "Blue: 10 U.S. destroyers. Red: 8 navy ships + 6 coast guard / militia hulls." }],
-  [{ text: "Each period (2 days). ", options: { bold: true } }, { text: "Each side chooses where its ships go and whether to patrol (P) or assert (A: shadow, block, water cannon)." }],
+  [{ text: "Players. ", options: { bold: true, color: C.accent1 } }, { text: "Blue: 10 U.S. destroyers (DDG). Red: 8 navy ships (PLAN) + 6 coast guard / militia hulls (CCG)." }],
+  [{ text: "Each period (2 days). ", options: { bold: true } }, { text: "Each side chooses where its ships go and whether to patrol (P) or assert (A: shadowing, close maneuvering, querying and warning; for the U.S. also freedom-of-navigation operations)." }],
   [{ text: "Control ", options: { bold: true } }, { text: "of a zone follows the local force ratio, so each side's best move depends on the other's." }],
   [{ text: "Incidents ", options: { bold: true, color: C.accent2 } }, { text: "can happen when both sides are present, and are likelier if someone asserts. Incidents raise an escalation level; at the top is war, which costs both sides." }],
-  [{ text: "Fog. ", options: { bold: true } }, { text: "Each side only partly sees the other's ships. Weather (Nature) can close zones." }],
+  [{ text: "Fog. ", options: { bold: true } }, { text: "Neither side sees the other's entire fleet disposition; only forces present where they also maintain forces. Storms can close zones." }],
 ], { x: 6.0, y: 1.45, w: 6.7, h: 4.6, fontSize: 18 });
-s.addNotes("(~60 s) Squares are home ports, circles are the eight contested zones, grouped North, Center, South. Dashed lines are the extra Philippine port, one of our redesigns. Three things make this a game rather than a single optimization: control is relative, so my best move depends on yours; escalation risk is shared, because incidents need both sides present and war costs both; and neither side sees everything.");
+s.addNotes("(~60 s) China claims most of the South China Sea and contests the Senkakus, pressing those claims with coast guard and militia hulls backed by navy ships; the U.S. keeps the seas open with destroyers on presence and freedom-of-navigation patrols (Helmus 2024; Green 2017). Squares are home ports, circles are the eight contested zones, grouped North, Center, South. Dashed lines are the extra Philippine port, one of our redesigns. Three things make this a game rather than a single optimization: control is relative, so my best move depends on yours; escalation risk is shared, because incidents need both sides present and war costs both; and neither side sees the other's full fleet, only the ships where it also has ships.");
 
 // ---------------------------------------------------------------- 3 RQs + feedback
 s = content("Introduction", "Research questions and what changed since the proposal");
 const rq = [
-  ["RQ1", "Control vs. escalation", "How much control does a looser escalation-risk budget buy, at what war risk, and what budgets do both sides pick in equilibrium?"],
-  ["RQ2", "Strategic vs. heuristic play", "Do equilibrium, maximin and best-response policies beat simple rules, and can mutual restraint be sustained?"],
-  ["RQ3", "Robustness and redesign", "Is the best policy or design in normal weather also best when weather turns bad (expected and worst case)?"],
+  ["RQ1", "Control vs. war risk", "Each side caps how much incident risk it will accept each period (its risk budget ε). How much more control does a side gain by accepting more risk, how much more likely does war become, and what risk level does each side pick when it knows the other side is picking too?"],
+  ["RQ2", "Game theory vs. rules of thumb", "Does planning with game theory (best responses, equilibrium or maximin plans) beat simple rules or random moves? Can both sides stay at patrol over many periods, because asserting once would end the truce and push both into riskier play from then on?"],
+  ["RQ3", "Weather and redesign", "Does the plan or Blue redesign that works best in normal weather still work best across calm, typhoon and extreme weather scenarios, both on average and in the worst scenario?"],
 ];
 rq.forEach((r, i) => {
-  const y = 1.45 + i * 1.5;
+  const y = 1.35 + i * 1.6;
   n++; s.addShape(pres.shapes.OVAL, { objectName: "c" + n, x: 0.6, y: y + 0.1, w: 0.8, h: 0.8, fill: { color: C.accent1 } });
   T(s, r[0], { x: 0.6, y: y + 0.1, w: 0.8, h: 0.8, fontSize: 16, bold: true, color: C.background1, align: "center", valign: "middle" });
-  T(s, [{ text: r[1], options: { bold: true, breakLine: true } }, { text: r[2], options: { fontSize: 14 } }], { x: 1.6, y, w: 5.0, h: 1.3, fontSize: 17, valign: "top" });
+  T(s, [{ text: r[1], options: { bold: true, breakLine: true } }, { text: r[2], options: { fontSize: 13 } }], { x: 1.6, y, w: 5.2, h: 1.5, fontSize: 16, valign: "top" });
 });
 n++;
 s.addTable([
   [{ text: "Feedback", options: { bold: true, color: C.background1, fill: { color: C.text2 } } }, { text: "What we did", options: { bold: true, color: C.background1, fill: { color: C.text2 } } }],
-  ["Model too high level", "Full formal game: state, actions, information, dynamics, payoffs"],
-  ["Q1 is a feasible region / MIP", "Best response solved as a MIP; aggressive/moderate/conservative = its risk budget ε"],
-  ["More ambitious questions", "Frontier + budget game, equilibrium play, robustness and redesign"],
-  ["Define the redesign", "Three Blue designs: extra port in the Philippines, extra surveillance, crisis hotline"],
-  ["Propose missing values", "All values listed and marked as assumptions"],
-  ["Prof. Sapsis: weather", "Weather scenarios as Nature's move; expected and worst-case payoff"],
-], { objectName: "fbtable", x: 7.0, y: 1.45, w: 5.7, colW: [2.0, 3.7], fontSize: 12, color: C.text1, border: { type: "solid", pt: 0.5, color: HEX.accent6 }, valign: "middle", rowH: 0.62 });
-s.addNotes("(~60 s) Three questions. RQ1: what does accepting more escalation risk buy, and what risk levels do both sides choose? RQ2: does game-theoretic play beat simple rules? RQ3, from Prof. Sapsis's comment: does the best strategy stay best when weather turns bad? The table maps each piece of Deliverable 1 feedback to what we changed. The main one: the model is now fully formal, and the proposal's strategy types are a single risk-budget number inside a MIP.");
+  ["Model too high level", "Formal game on a graph"],
+  ["Q1 is a feasible region, use a MIP", "Best response is an exact MIP; commander types become risk budgets ε"],
+  ["More ambitious questions", "Budget-game equilibrium (RQ1), equilibrium play (RQ2), robustness and redesign (RQ3)"],
+  ["Define the resilient redesign", "Three Blue designs"],
+  ["Propose values for missing data", "Assumed values, listed in the report"],
+  ["Show preliminary results", "Analytical results; 77 setups × 200 simulated games"],
+  ["Add weather (Prof. Sapsis)", "Weather scenarios; expected and worst-case payoff"],
+], { objectName: "fbtable", x: 7.0, y: 1.45, w: 5.7, colW: [2.0, 3.7], fontSize: 12, color: C.text1, border: { type: "solid", pt: 0.5, color: HEX.accent6 }, valign: "middle", rowH: 0.56 });
+s.addNotes("(~60 s) Three questions. RQ1: each side caps the incident risk it accepts per period; how much control does more risk buy, how much likelier does war become, and what cap does each side pick when the other is picking too? RQ2: does a side that plans with game theory beat one that follows simple rules, and can both sides stay at patrol over many periods, because asserting once would end the truce and push both into riskier play from then on? RQ3, from Prof. Sapsis's comment: does the best plan or Blue redesign in normal weather stay best across calm, typhoon and extreme weather scenarios, on average and in the worst scenario? The table maps each piece of Deliverable 1 feedback to what we changed. The main one: the model is now fully formal, and the proposal's strategy types are a single risk-budget number inside a MIP.");
 
 // ---------------------------------------------------------------- 4 model
 pres.addSection({ title: "Model" });
 s = content("Model", "The game, one period at a time");
-const steps = ["Nature draws the sea state of each region", "Each side sees its own ships and detects some enemy ships", "Ships low on endurance head home", "Both sides choose moves and postures at the same time", "Moves happen within fuel budgets", "Control updates; incidents are drawn; escalation level moves", "Payoffs are paid; stop at war or after 60 periods"];
+const steps = ["The weather (sea state) of each region is drawn", "Each side sees its own ships and detects some enemy ships", "Ships low on endurance head home", "Both sides choose moves and postures at the same time", "Moves happen within movement budgets", "Control updates; incidents are drawn; escalation level moves", "Payoffs are paid; stop at war or after 60 periods"];
 steps.forEach((t, i) => {
   const y = 1.4 + i * 0.66;
   n++; s.addShape(pres.shapes.OVAL, { objectName: "st" + n, x: 0.6, y, w: 0.5, h: 0.5, fill: { color: i === 0 ? C.accent4 : (i === 5 ? C.accent2 : C.accent1) } });
@@ -111,7 +112,7 @@ steps.forEach((t, i) => {
 n++; s.addShape(pres.shapes.ROUNDED_RECTANGLE, { objectName: "eqbox", x: 6.9, y: 1.4, w: 5.8, h: 4.55, fill: { color: C.background2 }, line: { color: C.accent6, width: 1 }, rectRadius: 0.08 });
 T(s, [
   { text: "Control of zone v", options: { bold: true, color: C.accent1, breakLine: true } },
-  { text: "c ← 0.7·c + 0.3·φ,   φ = (S_B − S_R) / (S_B + S_R + 1)", options: { fontFace: "Cambria", breakLine: true } },
+  { text: "c ← (1 − λ)·c + λ·φ,  λ = 0.3,   φ = (S_B − S_R) / (S_B + S_R + κ)", options: { fontFace: "Cambria", breakLine: true } },
   { text: "Presence builds control slowly; leaving lets it decay.", options: { fontSize: 13, color: C.accent5, breakLine: true } },
   { text: " ", options: { fontSize: 8, breakLine: true } },
   { text: "Incident chance", options: { bold: true, color: C.accent2, breakLine: true } },
@@ -119,18 +120,18 @@ T(s, [
   { text: "Needs both sides present; grows with assertion and with the escalation level ℓ.", options: { fontSize: 13, color: C.accent5, breakLine: true } },
   { text: " ", options: { fontSize: 8, breakLine: true } },
   { text: "Payoff", options: { bold: true, color: C.text2, breakLine: true } },
-  { text: "Σ value × control − move cost − escalation cost − 200·[war]", options: { fontFace: "Cambria", breakLine: true } },
-  { text: "War hurts both sides, so the game is not zero-sum.", options: { fontSize: 13, color: C.accent5 } },
+  { text: "g = Σ V·c − γ·moves − η·ℓ − ζ_D,   minus W = 200 at war", options: { fontFace: "Cambria", breakLine: true } },
+  { text: "Value of control minus fuel, tension and Blue's redesign cost ζ_D. War hurts both sides, so the game is not zero-sum.", options: { fontSize: 13, color: C.accent5 } },
 ], { x: 7.15, y: 1.55, w: 5.3, h: 4.3, fontSize: 14, valign: "top" });
 takeaway(s, "Every rule is explicit, so the same game can be played thousands of times by different strategies.");
-s.addNotes("(~70 s) Walk the timeline top to bottom: this is one two-day turn. Nature moves first with the weather, then both sides move at the same time without seeing each other's full fleet. The box holds all the dynamics. Control moves 30% of the way toward the local force ratio each turn. Incidents need both sides present, and are likelier when someone asserts and when tensions are already high. Payoff is value of zones held minus costs; war costs both sides 200, so the game is not zero-sum. If asked: every number is our assumption, listed in Table 1 of the report.");
+s.addNotes("(~70 s) Walk the timeline top to bottom: this is one two-day turn. The weather is drawn first, then both sides move at the same time without seeing each other's full fleet. The box holds all the dynamics. Control moves 30% of the way toward the local force ratio each turn. Incidents need both sides present, and are likelier when someone asserts and when tensions are already high. Payoff is value of zones held minus fuel, tension, and for Blue the running cost of its redesign, zeta-D; war costs both sides 200, so the game is not zero-sum. If asked: every number is our assumption, listed in Table 1 of the report.");
 
 // ---------------------------------------------------------------- 5 decisions
 s = content("Model", "How the players decide");
 const cards = [
-  ["Best response as a MIP", C.accent1, "Each period, choose moves and postures to maximize value of control minus costs, subject to fuel, endurance, and an escalation-risk budget:\n\nexpected incidents ≤ ε", "Conservative / moderate / aggressive = ε of 0.05 / 0.15 / 0.40"],
+  ["Best response as a MIP", C.accent1, "Each period, choose moves and postures to maximize value of control minus costs, subject to the movement budget, endurance, and an escalation-risk budget:\n\nexpected incidents ≤ ε", "Conservative / moderate / aggressive = ε of 0.05 / 0.15 / 0.40"],
   ["Template game", C.accent4, "Abstract each side to 14 templates: how to split ships North / Center / South, and patrol or assert.\n\nA 14×14 strategic-form game", "Solved with dominance, Nash equilibrium, maximin LP, correlated-equilibrium LP"],
-  ["Policies we compare", C.accent2, "Random moves  |  Rule of thumb\nQuick best response (greedy)\nBest response (MIP)\nNash equilibrium plan\nSafety-first plan (maximin)", "Same seeds and weather for every policy"],
+  ["Policies we compare", C.accent2, "Random moves  |  Rule of thumb\nQuick best response (greedy)\nBest response (MIP)\nNash equilibrium plan\nSafety-first plan (maximin)", "Same random draws and weather for every policy"],
 ];
 cards.forEach((c, i) => {
   const x = 0.6 + i * 4.1;
@@ -160,7 +161,7 @@ bullets(s, [
   [{ text: "Repetition helps: ", options: { bold: true } }, { text: "with grim trigger, mutual patrolling is a subgame perfect equilibrium for any discount factor above 0.18. Ours is 0.98." }],
 ], { x: 7.0, y: 1.5, w: 5.7, h: 4.5, fontSize: 17 });
 takeaway(s, "Restraint is not stable in a one-shot encounter, but it can be sustained by repeated play or a coordination device.");
-s.addNotes("(~70 s) A small example from our own game. Fix where ships go; each side only chooses patrol or assert. Read the table: asserting against a patroller pays a little, but if both assert, both lose more than 11. So the best reply is to do the opposite of the other side, like the shared-compute example in Lecture 3. Two fixes: a correlated equilibrium, which is what a mediator or hotline can implement, never recommends both asserting; and in the repeated game, grim trigger makes mutual patrolling a subgame perfect equilibrium whenever the discount factor is above 0.18. Ours is 0.98.");
+s.addNotes("(~70 s) A small example from our own game. Fix where ships go; each side only chooses patrol or assert. Read the table: asserting against a patroller pays a little, but if both assert, both lose more than 11. So the best reply is to do the opposite of the other side, like the shared-compute example in Lecture 3. Two fixes: a correlated equilibrium, which is what a mediator or hotline can implement, never recommends both asserting; and in the repeated game, grim trigger (both patrol; after any assertion, both switch to the mixed equilibrium for good) makes mutual patrolling a subgame perfect equilibrium whenever the discount factor is above 0.18. Ours is 0.98.");
 
 // ---------------------------------------------------------------- 7 prototype
 s = content("Results", "The prototype: watch a game play out");
@@ -170,7 +171,7 @@ bullets(s, [
   [{ text: "Zone color ", options: { bold: true } }, { text: "shows control: blue = Blue, red = Red." }],
   [{ text: "B / P / C ", options: { bold: true } }, { text: "= destroyers, navy ships, coast guard. Thick outline = asserting." }],
   [{ text: "Orange ring ", options: { bold: true, color: C.accent3 } }, { text: "= incident. Shaded region = rough sea or storm." }],
-  [{ text: "Run many games ", options: { bold: true } }, { text: "replays the same setup over many random seeds and reports averages." }],
+  [{ text: "Run many games ", options: { bold: true } }, { text: "plays the same setup as many simulated games and reports averages." }],
 ], { x: 8.1, y: 1.45, w: 4.6, h: 4.7, fontSize: 16 });
 s.addNotes("(~60 s, or a 60 s live demo) This is the prototype. Pick a plan for each side, a design and the weather, then Step or Play. Zone color is who controls it. Letters count ships. Thick outlines mean asserting, an orange ring is an incident, shading is bad weather. Bottom left is the escalation ladder; level 5 is war. 'Run many games' gives averages. The screenshot is turn 12 with a storm over the North. The same file runs batch experiments; a second script reproduces every number in the report.");
 
@@ -256,7 +257,7 @@ s.addNotes("(~45 s) Be direct about limits. Left is what the runs support. Right
 pres.addSection({ title: "Next steps" });
 s = content("Next steps", "Plan for Workshop 2");
 const plan = [
-  ["Nov 3", "Beliefs and attacks", "Bayesian beliefs about enemy positions; weather that persists; test the three coded Red attacks (blockade, jamming, false contacts)"],
+  ["Nov 3", "Beliefs and attacks", "Bayesian beliefs about enemy positions; weather tied to the calendar (typhoon season, winter monsoon) with odds from climatology data; test the three coded Red attacks (blockade, jamming, false contacts); decide whether to keep the movement budget or drop it"],
   ["Nov 17", "Learning", "Red agents that learn from experience: do they exploit predictable Blue play? An attacker that moves after seeing Blue"],
   ["Dec 1", "Redesign", "Designs and combinations under attacks, persistent weather and a rare long typhoon; hotline as a mediator"],
   ["Dec 8", "Report", "Final report and presentation"],
@@ -270,7 +271,7 @@ plan.forEach((p, i) => {
   T(s, p[2], { x, y: 3.05, w: 2.8, h: 2.8, fontSize: 15, valign: "top" });
 });
 takeaway(s, "Each step follows the remaining course modules: learning, attacks and defenses, resilient design.");
-s.addNotes("(~45 s) Workshop 2 follows the remaining course modules. First, Bayesian beliefs and the three Red attacks already coded. Then learning agents, once taught: does a learning Red exploit predictable Blue play? Then redesigns under attack and long typhoons, with a cost for the hotline. Final report December 8. Thank you; happy to take questions.");
+s.addNotes("(~45 s) Workshop 2 follows the remaining course modules. First, Bayesian beliefs, weather scenarios tied to the calendar with odds from climatology data, and the three Red attacks already coded; we also decide whether to keep the theater-wide movement budget, which stands in for operational requirements and station-keeping. Then learning agents, once taught: does a learning Red exploit predictable Blue play? Then redesigns under attack and long typhoons, with a cost for the hotline. Final report December 8. Thank you; happy to take questions.");
 
 (async () => {
   const out = __dirname + "/../deliverables/02-workshop1-slides.pptx";

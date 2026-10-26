@@ -18,7 +18,7 @@ and weather (Nature) tests how robust each strategy and design is. The Workshop 
 
 | Path | Contents |
 | --- | --- |
-| `deliverables/` | Submitted deliverables: `01-proposal.pdf`, `02-workshop1-report.pdf`, `02-workshop1-slides.pptx` |
+| `deliverables/` | Submitted deliverables: `01-proposal.pdf`, `02-workshop1-report.pdf`, `02-workshop1-slides.pptx` (Workshop 1 deck; `02-workshop1-slides.pdf` is a PDF copy), `02-workshop1-presenter-notes.md` (talk script with timings, Q&A prep, sources), `02-workshop1-notation-table.pdf` (full notation table) |
 | `prototype/` | Simulator and GUI (`wargame_gui.py`), experiment scripts, and all Workshop 1 results (`results/`); see `prototype/README.md` |
 | `report/` | LaTeX source of the Workshop 1 report (`pdflatex report.tex`, twice) |
 | `slides/` | Script that builds the Workshop 1 slides (`npm install && node build.js`) |
