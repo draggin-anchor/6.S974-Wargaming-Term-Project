@@ -216,8 +216,8 @@ img(s, "weather.png", 0.6, 1.35, 5.9, 3.93);
 T(s, "Rough seas weaken Red's coast guard hulls and storms pause operations, so most policies do slightly worse in calm seas. The top two plans stay on top in every scenario.", { x: 0.6, y: 5.35, w: 5.9, h: 0.75, fontSize: 13, color: C.accent5 });
 n++;
 s.addChart(pres.charts.BAR, [
-  { name: "Expected", labels: ["D0 Baseline", "D1 Extra port", "D2 Extra surveillance", "D3 Crisis hotline"], values: [-144, -137, -162, -120] },
-  { name: "Worst case", labels: ["D0 Baseline", "D1 Extra port", "D2 Extra surveillance", "D3 Crisis hotline"], values: [-164, -153, -181, -140] },
+  { name: "Expected", labels: ["D0 Baseline", "D1 Extra port", "D2 Extra surveillance", "D3 De-escalation"], values: [-144, -137, -162, -120] },
+  { name: "Worst case", labels: ["D0 Baseline", "D1 Extra port", "D2 Extra surveillance", "D3 De-escalation"], values: [-164, -153, -181, -140] },
 ], {
   objectName: "rq3chart", x: 6.8, y: 1.35, w: 5.9, h: 3.6, barDir: "col", barGrouping: "clustered",
   chartColors: [HEX.accent1, HEX.accent2], showValue: true, dataLabelPosition: "outEnd", dataLabelFontSize: 11, dataLabelFontFace: "+mn-lt", dataLabelColor: HEX.dk1,
@@ -226,9 +226,9 @@ s.addChart(pres.charts.BAR, [
   catAxisLabelFontSize: 12, catAxisLabelFontFace: "+mn-lt", catAxisLabelColor: HEX.dk1, valAxisLabelFontSize: 11, valAxisLabelFontFace: "+mn-lt", valAxisLabelColor: HEX.accent5,
   valGridLine: { color: "DDE3EA", size: 0.5 }, catGridLine: { style: "none" }, catAxisLabelPos: "low", valAxisMinVal: -200, valAxisMaxVal: 0,
 });
-T(s, "War rate (normal weather): D0 20%, D1 28%, D2 23%, D3 5%. The hotline was given no cost yet.", { x: 6.8, y: 5.0, w: 5.9, h: 0.4, fontSize: 13, color: C.accent5 });
-takeaway(s, "The plan that is best on average is also best in the worst weather. The crisis hotline is the best design and cuts war about 4×.");
-s.addNotes("(~70 s) Robustness here means two numbers: expected payoff over the four weather scenarios, and worst case. Left: the policy ranking does not change across weather; the top two plans stay on top. Bad weather slightly helps Blue here, because rough seas weaken Red's coast-guard hulls. Right: of the three redesigns, the crisis hotline is best on average and in the worst case, and cuts war about four times. Caveat: we gave it no cost yet, and it also helps Red, so it is a joint gain.");
+T(s, "War rate (normal weather): D0 20%, D1 28%, D2 23%, D3 5%. De-escalation measures were given no cost yet.", { x: 6.8, y: 5.0, w: 5.9, h: 0.4, fontSize: 13, color: C.accent5 });
+takeaway(s, "The plan that is best on average is also best in the worst weather. De-escalation measures are the best design and cut war about 4×.");
+s.addNotes("(~70 s) Robustness here means two numbers: expected payoff over the four weather scenarios, and worst case. Left: the policy ranking does not change across weather; the top two plans stay on top. Bad weather slightly helps Blue here, because rough seas weaken Red's coast-guard hulls. Right: of the three redesigns, de-escalation measures are best on average and in the worst case, and cut war about four times. Caveat: we gave them no cost yet, and they also help Red, so it is a joint gain.");
 
 // ---------------------------------------------------------------- 11 caveats
 s = content("Results", "What the evidence does and does not show");
@@ -242,16 +242,16 @@ col(0.6, "Supported", C.accent4, [
   "Left alone, both sides loosen their budgets (prisoner's dilemma)",
   "Restraint can be an equilibrium of the repeated game",
   "The Nash equilibrium plan is the most robust Blue policy here",
-  "A crisis hotline is a joint gain under every weather scenario",
+  "De-escalation measures are a joint gain under every weather scenario",
 ]);
 col(6.8, "Not yet shown", C.accent2, [
   "All numbers are assumptions, not calibrated to data",
   "Policies look only one period ahead",
   "War penalty may be too small: the top-payoff policy also has the most wars",
-  "The hotline has no cost yet, so part of its win is built in",
+  "De-escalation measures have no cost yet, so part of their win is built in",
   "Differences under about 20 payoff points are ties",
 ]);
-s.addNotes("(~45 s) Be direct about limits. Left is what the runs support. Right is what they do not: values are assumptions, policies look one turn ahead, the war rate depends heavily on a few parameters, and the hotline result is partly built in. A sensitivity sweep is the first item for Workshop 2.");
+s.addNotes("(~45 s) Be direct about limits. Left is what the runs support. Right is what they do not: values are assumptions, policies look one turn ahead, the war rate depends heavily on a few parameters, and the de-escalation result is partly built in. A sensitivity sweep is the first item for Workshop 2.");
 
 // ---------------------------------------------------------------- 12 plan
 pres.addSection({ title: "Next steps" });
@@ -259,7 +259,7 @@ s = content("Next steps", "Plan for Workshop 2");
 const plan = [
   ["Nov 3", "Beliefs and attacks", "Bayesian beliefs about enemy positions; weather tied to the calendar (typhoon season, winter monsoon) with odds from climatology data; test the three coded Red attacks (blockade, jamming, false contacts); decide whether to keep the movement budget or drop it"],
   ["Nov 17", "Learning", "Red agents that learn from experience: do they exploit predictable Blue play? An attacker that moves after seeing Blue"],
-  ["Dec 1", "Redesign", "Designs and combinations under attacks, persistent weather and a rare long typhoon; hotline as a mediator"],
+  ["Dec 1", "Redesign", "Designs and combinations under attacks, persistent weather and a rare long typhoon; a cost for de-escalation measures"],
   ["Dec 8", "Report", "Final report and presentation"],
 ];
 n++; s.addShape(pres.shapes.LINE, { objectName: "tl", x: 1.0, y: 2.1, w: 11.3, h: 0, line: { color: C.accent6, width: 3 } });
@@ -271,7 +271,7 @@ plan.forEach((p, i) => {
   T(s, p[2], { x, y: 3.05, w: 2.8, h: 2.8, fontSize: 15, valign: "top" });
 });
 takeaway(s, "Next: learning, attacks and defenses, and resilient design, in that order.");
-s.addNotes("(~45 s) Workshop 2 plan. First, Bayesian beliefs, weather scenarios tied to the calendar with odds from climatology data, and the three Red attacks already coded; we also decide whether to keep the theater-wide movement budget, which stands in for operational requirements and station-keeping. Then learning agents: does a learning Red exploit predictable Blue play? Then redesigns under attack and long typhoons, with a cost for the hotline. Final report December 8. Thank you; happy to take questions.");
+s.addNotes("(~45 s) Workshop 2 plan. First, Bayesian beliefs, weather scenarios tied to the calendar with odds from climatology data, and the three Red attacks already coded; we also decide whether to keep the theater-wide movement budget, which stands in for operational requirements and station-keeping. Then learning agents: does a learning Red exploit predictable Blue play? Then redesigns under attack and long typhoons, with a cost for de-escalation measures. Final report December 8. Thank you; happy to take questions.");
 
 (async () => {
   const out = __dirname + "/../deliverables/02-workshop1-slides.pptx";
