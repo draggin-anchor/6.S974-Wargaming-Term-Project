@@ -1,7 +1,7 @@
 # Workshop 1 presenter notes and Q&A
 
 **Talk:** Tue 2026-10-27. 10 minutes + 2 minutes of questions. 12 slides.
-**Synced to:** the paper and the deck as of Mon 2026-10-26, 7:45 PM ET, when Sean finished his paper review. This includes all changes Sean accepted today. LCS are removed, §1 and the RQ wording are new, weather is now stylized scenarios, the fuel budget is now a movement budget, the ship index is j, and §3.6, §4.1 and §4.2 are revised.
+**Synced to:** the final paper (report_final_2026-10-26.pdf, checked 7:50 PM ET) and the deck as pushed at 636c3f6. Matt is now editing the deck. This includes all changes Sean accepted today. LCS are removed, §1 and the RQ wording are new, weather is now stylized scenarios, the fuel budget is now a movement budget, the ship index is j, and §3.6, §4.1 and §4.2 are revised.
 
 Part 1 is the game formulation in plain words, so any of the three of you can answer questions on it. Part 2 is the slide-by-slide script with timings. Part 3 is the likely Q&A. Part 4 is the sources for any claim about real U.S. or Chinese behavior.
 
@@ -83,7 +83,7 @@ One Blue DDG meets one Red CCG hull in calm seas, at ℓ = 1, with control start
   - Every policy faces the same random draws and weather.
 
 ### Blue redesigns (§3.8)
-- **D1 extra port.** A third Blue port at Subic Bay, linked to Scarborough, Luzon and Second Thomas. It costs 0.3 per period. It is a structural change.
+- **D1 extra port.** A third Blue port at Subic Bay, linked to Scarborough, Luzon and Second Thomas. It costs 0.3 per period. It is a structural change. With D1, Blue starts 4/3/3 at Yokosuka, Guam and Subic.
 - **D2 extra surveillance.** Blue detects in every zone with probability at least 0.6, even in bad weather. It costs 0.5 per period.
 - **D3 de-escalation measures** (hotline plus CUES-style encounter rules). At ℓ ≥ 3, a quiet period lowers ℓ with probability 0.5 instead of 0.25, and assert hazards are halved. **It has no cost yet**, and it helps Red as much as Blue.
 
@@ -93,7 +93,6 @@ There are two unitary players, with no allies as players. Control is a force-rat
 ### On the slides but no longer in the 5-page paper
 The paper was cut to 5 pages on 10/26. If asked "where is that in the report?", these are now only on the slides or in these notes.
 - **Theater map and GUI screenshot** (slides 2 and 7). The paper has no figures now.
-- **RQ1 frontier** (slide 8, left). Raising Blue's budget ε from 0.02 to 0.15 lifts Blue's control share from −0.25 to −0.05, while war rises from 7% to 20%. Going to 0.40 adds only 0.06 more control.
 - **RQ3 policy-by-weather chart** (slide 10, left).
 - **Correlated equilibrium of the 2 × 2** (slide 6). It puts 0.40 on (patrol, patrol), 0.54 on (Blue asserts, Red patrols), 0.06 on (Blue patrols, Red asserts), and 0 on (assert, assert).
 - **Common random numbers** (same seeds and weather for every policy), **maximin's definition**, and the **full β derivation**. See Q30c, the policies bullet above, and Q21.
@@ -188,7 +187,7 @@ The current speaker notes add up to about 11.5 minutes. The timings below fit 10
 
 **11. Evidence (0:35).** Left is what the runs support. Right is what they do not. Values are assumptions, policies look one turn ahead, the war rate depends heavily on a few parameters, and the de-escalation result is partly built in. A sensitivity analysis is first for Workshop 2.
 
-**12. Workshop 2 (0:30).** First comes a sensitivity analysis on the zone values, hazards, war penalty and cool-down rate. Then we add Bayesian beliefs and calendar-based weather from real data, and we reformulate the movement budget with oilers in mind. Next come learning agents, three Red attacks and Blue's defenses. Last, we test the redesigns under attack, with a cost for de-escalation measures. Thank you. We are happy to take questions.
+**12. Workshop 2 (0:30).** For the model, we add Bayesian beliefs, a best response that looks more than one period ahead, a sensitivity analysis on the zone values, hazards, war penalty and cool-down rate, and calendar-based weather from real data. We also reformulate the movement budget with oilers in mind. Then come learning agents, a Red attacker that reacts to Blue's posture, and Blue's defenses. Last, we test the redesigns and their combinations under attack and a long typhoon, with a cost for de-escalation measures. (The script follows the final paper, which has no dates. Matt is editing the deck, and slide 12 may still show dates. If it does, follow the slide.) Thank you. We are happy to take questions.
 
 ---
 
@@ -393,7 +392,7 @@ Yes. Each game uses Python's `random.Random` (Mersenne Twister) seeded with the 
 200 simulated games per setup was a practical choice for this stage. We haven't yet done a formal check of how many games are needed. That is on our Workshop 2 list.
 
 **Q30. Are the differences significant?**
-Standard errors of the averages are 5 to 12 payoff points. We treat differences under about 20 points as ties, and the slides say so.
+Standard errors of the averages are 5 to 12 payoff points. We treat differences under about 20 points as ties, and the paper says so.
 
 **★ Q31. Why does the Nash plan beat the MIP best response?**
 This is our reading, not yet tested separately. The MIP best response looks one turn ahead and reacts to last-seen beliefs, so it escalates more (20% war vs 10%). The Nash plan commits to a center-heavy split and backs off to patrol when tension passes ℓ = 3. Its worst case over Red's policies is the best, −116.
@@ -416,13 +415,13 @@ Shorter trips to the South let Blue contest Red's valuable southern zones, which
 `Game.step` is the 7-step timeline with the control, hazard and payoff equations. `MIPBRPolicy` builds and solves the MIP each turn. `MetaGame` builds the template game and runs dominance, Nash enumeration and both LPs. `experiments.py all` regenerates every number in the report.
 
 **Q35. What will learning add?**
-In Workshop 2 we add learning agents, such as a Red that adapts over repeated play. The question is whether they converge or cycle, drift toward restraint or assertion, and exploit predictable Blue play. Say "other learning methods" as the paper does. Name fictitious play or no-regret learning only if asked which ones. (Present these only as plans. We have not built them yet.)
+In Workshop 2 we add learning agents, such as a Red that adapts over repeated play. The question is whether they converge or cycle, drift toward restraint, and exploit a rule-based Blue. Say "other learning methods" as the paper does. Name fictitious play or no-regret learning only if asked which ones. (Present these only as plans. We have not built them yet.)
 
 **Q36. What attacks will you test?**
 Three are already coded. In the blockade, Blue cannot pass through Scarborough or Second Thomas while Red's coast guard asserts there. In jamming, Blue's detection is halved in one region from period 20 to 40. In deception, Blue sees 2 phantom contacts each period. The defenses are randomized patrols, D1 and D2.
 
 **Q36a. Did you use AI tools?**
-Yes, and the paper says how in the AI-usage statement after the references. Point to it.
+Yes. The statement after the references says AI models such as Claude and ChatGPT helped formulate the model, review and edit the text, write code and check for errors. The authors reviewed all content and are responsible for it.
 
 ### F. Real-world grounding (cite if pressed; see Part 4)
 
