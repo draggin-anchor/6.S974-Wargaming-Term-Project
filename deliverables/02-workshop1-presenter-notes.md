@@ -269,6 +269,9 @@ No. It is a one-period best response to beliefs about where the enemy is. Equili
 **★ Q19. Why both a risk budget ε and an incident price Λ?**
 Λ prices risk in the objective; ε is a hard limit, the commander's risk tolerance or rules of engagement. The budget is what the D1 feedback called a feasible region, and it makes the proposal's three commander types a single number we can vary for RQ1.
 
+**Q19a. How could forced returns break the risk budget?**
+A ship on forced return has a fixed next node: one step closer to home, or it stays put if no such node can be entered, for example because of a storm. If that node is a contested zone where the opponent is believed present, the incident risk is above zero even on patrol, and no other move can remove it. The cap ε(1 − ℓ/L) is tiny at high tension: a conservative 0.05 becomes 0.01 at ℓ = 4. So one such hull can exceed it, and without slack the MIP would have no solution. The slack carries a penalty of 1,000 per unit, so it covers only the unavoidable excess, and everything else is made as safe as possible. We do not log how often this happens, so don't claim it is rare.
+
 **Q20. Why enumerate (count, posture) options instead of writing the formula in the MIP?**
 Control and incident chance are a ratio and an exponential in ship counts, which a linear program cannot hold. Listing each zone's few possible options as binaries, with value and risk computed beforehand, keeps it linear and exact.
 
