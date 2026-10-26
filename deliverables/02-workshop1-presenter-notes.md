@@ -305,6 +305,9 @@ Each player keeps a memory, zone by zone, of the opponent's posture. When it det
 **Q21a. Why δ = 0.98? Isn't that arbitrary?**
 It is our assumption, per two-day period. A payoff 60 periods (about four months) out is worth 0.98⁵⁹ ≈ 0.30 of today's, and the half-life is about 34 periods (about 70 days). It sits far above the 0.18 grim-trigger threshold, so the restraint result does not hinge on the exact value. It also sets β ≈ 0.96 in the MIP.
 
+**Q21b. Does the greedy heuristic apply the constraints?**
+It is built to. It keeps moves legal (one edge, no storm-closed zones or enemy ports, endurance), places forced returns first, and respects the movement budget. It also refuses any move or assertion that would push expected incidents over ε(1 − ℓ/L). The difference is the search: it moves one ship at a time to the best legal spot, then picks patrol or assert per zone, and repeats a few rounds until nothing improves. So it is fast but can stop at a good plan rather than the best one. It has no slack: if forced returns alone exceed the budget, it just refuses anything that adds risk. **Caveat:** when its final plans are scored the same way as the MIP's, greedy still exceeded the budget in 208 of 1,524 decisions, against 37 for the MIP, all of which came from forced returns. We have not yet diagnosed why greedy's step-by-step checks let those through. If asked, say exactly that.
+
 **Q22. How do you know the MIP solutions are right?**
 Gurobi solves it exactly. We compared it to the greedy heuristic over 1,524 Blue decisions: they agreed 67% of the time, but greedy broke the risk budget 14% of the time. That is why the exact MIP matters even though both play about the same.
 
