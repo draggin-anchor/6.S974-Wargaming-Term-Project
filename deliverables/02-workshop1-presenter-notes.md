@@ -18,7 +18,7 @@ Two navies station ships on a network of contested waters every two days and cho
 |---|---|---|
 | **Players** | Blue = U.S. Navy. Red = China: navy (PLAN) ships plus coast guard / maritime militia hulls, grouped as CCG. | 10 DDG; 8 PLAN + 6 CCG |
 | **Map** | Undirected graph G = (V, E) (Lecture 2). 8 contested zones: Senkakus, Miyako Strait, Taiwan Strait, east of Taiwan, Luzon Strait, Scarborough Shoal, Second Thomas Shoal, Paracels. Home ports: Blue Yokosuka, Guam; Red Ningbo, Sanya. An edge = one period of sailing. Three weather regions: North, Center, South. | Each zone has a value V for each side; Red values Scarborough and the Paracels more. |
-| **Time** | Periods of 2 days, T = 60 (about 4 months). Discount δ per period (Lectures 5–6). | δ = 0.98 (0.98⁶⁰ ≈ 0.30) |
+| **Time** | Periods of 2 days, T = 60 (about 4 months). All ships start in port with full endurance: DDGs 5/5 at Yokosuka/Guam, each Red type split evenly between Ningbo and Sanya. Discount δ per period (Lectures 5–6). | δ = 0.98 (0.98⁶⁰ ≈ 0.30) |
 | **State** | Ships at each node; each ship's endurance (periods left at sea); control index c of each zone in [−1, 1] (+1 Blue fully in charge, −1 Red); escalation level ℓ from 0 (calm) to L = 5 (war); sea state per region. | Start at ℓ = 1; start control in Table 2 |
 | **Information (fog)** | Each side sees its own ships, control, ℓ and weather. Neither side sees the other's entire fleet disposition; only forces present where they also maintain forces. Formally: detect enemy ships at a node with probability 0.95 if you have a ship there, 0.6 next door or near your port, 0.2 elsewhere (satellite), ×0.7 in rough seas. Belief = last count seen. | Bayesian beliefs are the Workshop 2 upgrade |
 | **Actions** | Simultaneous. Each ship: stay or sail one edge. Each zone where you have ships: posture **Patrol (P)** = routine presence, or **Assert (A)** = shadowing, close maneuvering, querying and warning, and (U.S. only) freedom-of-navigation operations, modeled as one posture. | Assert multiplies your strength by α = 1.5 |
@@ -289,6 +289,9 @@ Gurobi solves it exactly. We compared it to the greedy heuristic over 1,524 Blue
 
 **Q23. How does the template game relate to the full game?**
 If both sides held a template, control would settle at c = φ. Template payoffs are that settled control minus incident cost, in calm seas at ℓ = 1. It is an approximation used to compute equilibria; the simulations then test those plans in the full game.
+
+**Q23a. The template game uses fractional hulls. Isn't that unrealistic?**
+Yes. It is a known simplification: templates spread 70% of each fleet evenly over a region's zones, which can leave fractions of a ship in a zone. The full simulation always moves whole ships, but the template game sets which plan the Nash equilibrium and Safety-first policies play. A quick whole-ship check (rounding to Blue 7 DDG, Red 6 PLAN + 4 CCG; not in the paper) changes which side asserts in equilibrium: dominance leaves a single pure equilibrium, Blue center-heavy patrol vs. Red south-heavy assert, instead of the paper's two. So removing fractional hulls is first on our Workshop 2 list.
 
 **Q24. The template game has two pure equilibria. Which do you play?**
 The one with higher total payoff (Blue center-heavy assert vs Red south-heavy patrol). That selection is an assumption, stated in the paper.
