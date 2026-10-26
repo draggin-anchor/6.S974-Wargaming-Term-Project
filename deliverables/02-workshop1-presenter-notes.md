@@ -62,6 +62,12 @@ One Blue DDG meets one Red CCG hull, calm seas, ℓ = 1, control starts at 0.
 - **Value of an option:** a = V × β × (local balance) − Λ × (incident probability). β = λ/(1 − δ(1 − λ)) ≈ 0.96 converts one period of balance into its total discounted effect on control. Λ = 20 is the price of one expected incident.
 - **Limitation to own:** it looks one period ahead.
 
+**MIP pieces at a glance**
+- **y_{j,w}** = 1 if free ship j goes to node w: stay, sail home, or sail to a neighbor it can still get home from. Ships on forced return are not decided, so they have no y. y appears in four places: each ship gets exactly one destination; the movement budget (moves ≤ F_i − forced moves); the fuel cost −γ·Σy over moves; and the linking constraint (ships y sends into v, plus forced arrivals, = the n of the chosen option).
+- **n and p.** n is the player's own hull count in zone v by type: for Blue, the number of DDGs; for Red, (number of PLAN, number of CCG). p is the single posture in that zone, P or A. The rows run from the ships already committed to v (forced returns) up to that number plus every free ship that can reach v this turn, each with P and A. Zero ships has only a P row.
+- **a_v(n,p) = V·β·σ·φ − Λ·ρ** is one option's score: control gain minus incident cost. The MIP adds up a over the chosen rows, subtracts move costs, and maximizes, subject to total ρ ≤ the risk budget. The scores decide what is attractive; the budget decides what is allowed.
+- **β is not a linearization.** The option list handles the nonlinearity; β handles time (Q21).
+
 ### The template game (§3.7) and the six policies
 - The full game is far too big to solve for equilibrium. So we shrink it: each side picks one of **14 templates** = 7 ways to split ships North/Center/South × patrol or assert everywhere. Payoff = settled control (c = φ) minus incident cost, calm seas, ℓ = 1. That is a 14 × 14 strategic-form game, solved with dominance (IESDS), pure Nash enumeration, the maximin LP and the correlated-equilibrium LP (Lectures 3–4).
 - **Policies compared:** Random moves; Rule of thumb (moderate); Quick best response (greedy, no solver); Best response (MIP); Nash equilibrium plan (plays a pure NE template; of the two pure NE we pick the higher-total one, an assumption); Safety-first plan (maximin mixed strategy, redrawn every 3 periods). Same random seeds and weather for every policy.
