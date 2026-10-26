@@ -161,7 +161,7 @@ bullets(s, [
   [{ text: "Repetition helps: ", options: { bold: true } }, { text: "with grim trigger, mutual patrolling is a subgame perfect equilibrium for any discount factor above 0.18. Ours is 0.98." }],
 ], { x: 7.0, y: 1.5, w: 5.7, h: 4.5, fontSize: 17 });
 takeaway(s, "Restraint is not stable in a one-shot encounter, but it can be sustained by repeated play or a coordination device.");
-s.addNotes("(~70 s) A small example from our own game. Fix where ships go; each side only chooses patrol or assert. Read the table: asserting against a patroller pays a little, but if both assert, both lose more than 11. So the best reply is to do the opposite of the other side. Two fixes: a correlated equilibrium, which is what a mediator or hotline can implement, never recommends both asserting; and in the repeated game, grim trigger (both patrol; after any assertion, both switch to the mixed equilibrium for good) makes mutual patrolling a subgame perfect equilibrium whenever the discount factor is above 0.18. Ours is 0.98.");
+s.addNotes("(~70 s) A small example from our own game. Fix where ships go; each side only chooses patrol or assert. Read the table: asserting against a patroller pays a little, but if both assert, both lose more than 11. So the best reply is to do the opposite of the other side: an anti-coordination game. Two fixes: a correlated equilibrium, which is what a mediator or hotline can implement, never recommends both asserting; and in the repeated game, grim trigger (both patrol; after any assertion, both switch to the mixed equilibrium for good) makes mutual patrolling a subgame perfect equilibrium whenever the discount factor is above 0.18. Ours is 0.98.");
 
 // ---------------------------------------------------------------- 7 prototype
 s = content("Results", "The prototype: watch a game play out");
@@ -271,7 +271,7 @@ plan.forEach((p, i) => {
   T(s, p[2], { x, y: 3.05, w: 2.8, h: 2.8, fontSize: 15, valign: "top" });
 });
 takeaway(s, "Next: learning, attacks and defenses, and resilient design, in that order.");
-s.addNotes("(~45 s) Workshop 2 follows the remaining course modules. First, Bayesian beliefs, weather scenarios tied to the calendar with odds from climatology data, and the three Red attacks already coded; we also decide whether to keep the theater-wide movement budget, which stands in for operational requirements and station-keeping. Then learning agents, once taught: does a learning Red exploit predictable Blue play? Then redesigns under attack and long typhoons, with a cost for the hotline. Final report December 8. Thank you; happy to take questions.");
+s.addNotes("(~45 s) Workshop 2 plan. First, Bayesian beliefs, weather scenarios tied to the calendar with odds from climatology data, and the three Red attacks already coded; we also decide whether to keep the theater-wide movement budget, which stands in for operational requirements and station-keeping. Then learning agents: does a learning Red exploit predictable Blue play? Then redesigns under attack and long typhoons, with a cost for the hotline. Final report December 8. Thank you; happy to take questions.");
 
 (async () => {
   const out = __dirname + "/../deliverables/02-workshop1-slides.pptx";
