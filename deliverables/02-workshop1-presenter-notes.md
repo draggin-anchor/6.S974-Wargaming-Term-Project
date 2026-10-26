@@ -58,7 +58,7 @@ One Blue DDG meets one Red CCG hull, calm seas, ℓ = 1, control starts at 0.
 | 2 DDG, assert | 0.52 | 3.2% | 2.35 |
 
   The MIP picks one row per zone. Asserting adds value here, but it uses 0.032 of the risk budget ε against 0.005 for patrolling. Across all zones, that budget is what decides where assertion is worth it.
-- **Risk budget:** expected incidents this period ≤ ε × (1 − ℓ/L). This is the "feasible region" from the D1 feedback. The cap tightens to zero as ℓ approaches war. The proposal's commander types are now budgets: conservative 0.05, moderate 0.15, aggressive 0.40.
+- **Risk budget:** expected incidents this period ≤ ε × (1 − ℓ/L). This is the "feasible region" from the D1 feedback. The cap tightens to zero as ℓ approaches war. The proposal's commander types are now budgets: conservative 0.05, moderate 0.15, aggressive 0.40. **Slack ξ:** the budget row is really "expected incidents ≤ ε(1 − ℓ/L) + ξ", with ξ ≥ 0 and a penalty of 1000·ξ in the objective. A ship on forced return may have to pass through a zone the opponent occupies. That risk cannot be avoided, and near war it can exceed the shrinking cap. ξ lets the program exceed the cap by only that unavoidable amount, so it always has a solution (Q19a).
 - **Value of an option:** a = V × β × (local balance) − Λ × (incident probability). β = λ/(1 − δ(1 − λ)) ≈ 0.96 converts one period of balance into its total discounted effect on control. Λ = 20 is the price of one expected incident.
 - **Limitation to own:** it looks one period ahead.
 
