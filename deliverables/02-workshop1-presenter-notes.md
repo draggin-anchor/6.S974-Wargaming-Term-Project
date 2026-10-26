@@ -73,7 +73,7 @@ One Blue DDG meets one Red CCG hull, calm seas, ℓ = 1, control starts at 0.
 
 ### The template game (§3.7) and the six policies
 - The full game is far too big to solve for equilibrium. So we shrink it: each side picks one of **14 templates** = 7 ways to split ships North/Center/South × patrol or assert everywhere. Payoff = settled control (c = φ) minus incident cost, calm seas, ℓ = 1. That is a 14 × 14 strategic-form game, solved with dominance (IESDS), pure Nash enumeration, the maximin LP and the correlated-equilibrium LP (Lectures 3–4).
-- **Policies compared:** Random moves; Rule of thumb (moderate); Quick best response (greedy, no solver); Best response (MIP); Nash equilibrium plan (plays a pure NE template; of the two pure NE we pick the higher-total one, an assumption); Safety-first plan (maximin mixed strategy, redrawn every 3 periods). Same random seeds and weather for every policy.
+- **Policies compared** (slide name, then the paper's name in brackets): Random moves; Rule of thumb (rule-based, the moderate commander); Quick best response (greedy, no solver); Best response (MIP); Nash equilibrium plan (equilibrium: plays a pure NE template; of the two pure NE it uses the one with the higher total payoff, our choice); Safety-first plan (maximin: the template mix that guarantees the best payoff whatever the opponent plays, redrawn every 3 periods). Same random draws and weather for every policy.
 
 ### Blue redesigns (§3.8)
 - **D1 extra port:** Subic Bay (EDCA access), linked to Scarborough, Luzon, Second Thomas. Cost 0.3/period. Structural change.
