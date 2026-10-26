@@ -334,6 +334,12 @@ If both sides held a template, control would settle at c = φ. Template payoffs 
 **Q22a. What is IESDS?**
 Iterated elimination of strictly dominated strategies. Cross out any template that another template beats against every opponent choice, then repeat, since each removal can make new templates dominated. Every Nash equilibrium lies in what survives. In our template game it cuts 14 × 14 down to 2 × 4: Blue keeps only center-heavy (20/60/20, patrol or assert), and Red keeps south-heavy (20/20/60) and center/south (20/40/40), each with patrol or assert. That is why the slide 6 example fixes Blue center-heavy and Red south-heavy and varies only the posture.
 
+**Q22b. Is slide 6 / §4.1 analytical or simulated?**
+Analytical. The template game's payoffs come from the settled-control formula in calm seas at ℓ = 1, with no randomness. Dominance elimination and the pure equilibria come from enumeration, maximin and the correlated equilibrium from LPs, the mixed equilibrium from indifference equations, and the grim-trigger threshold from a closed form. Only §4.2–4.4 (RQ1–RQ3) are simulations (60 periods, 200 simulated games each). Present §4.1 as an illustration of the structure: its numbers use fractional hulls, and the whole-ship check gives a single equilibrium (Q23a).
+
+**Q22c. What is the zero-sum check in §4.1?**
+Drop the shared incident cost and the game becomes zero-sum, with Red getting minus Blue's control score. Then assert only adds strength, so it dominates, and the maximin LP has a pure saddle point: both sides concentrate on the Center (20/60/20) and assert, with value −2.26 for Blue. The Center holds the value, since Taiwan Strait is worth 10 to each side. Restore the shared incident cost and mutual assertion becomes costly: each pure equilibrium has exactly one side asserting, and Red shifts South. The takeaway is that shared risk produces restraint.
+
 **Q23a. The template game uses fractional hulls. Isn't that unrealistic?**
 Yes. It is a known simplification: templates spread 70% of each fleet evenly over a region's zones, which can leave fractions of a ship in a zone. The full simulation always moves whole ships, but the template game sets which plan the Nash equilibrium and Safety-first policies play. A quick whole-ship check (rounding to Blue 7 DDG, Red 6 PLAN + 4 CCG; not in the paper) changes which side asserts in equilibrium: dominance leaves a single pure equilibrium, Blue center-heavy patrol vs. Red south-heavy assert, instead of the paper's two. So removing fractional hulls is first on our Workshop 2 list.
 
@@ -379,7 +385,7 @@ Partly, yes, and we say so. It also raises Red's payoff (101 to 144) because few
 It does two things. Once ℓ ≥ 3, a quiet period lowers ℓ with probability 0.5 instead of 0.25; that is the hotline-like part, like the U.S.–China Defense Telephone Link set up in 2008. And assert hazards are halved; that is the CUES-like part, meaning agreed encounter rules and bridge-to-bridge communication. It is bilateral and helps Red too, so "de-escalation measures" covers both effects. The slide 7 screenshot was taken before the rename, so it may still show "Crisis hotline"; the current GUI says "De-escalation measures". It is the same design.
 
 **Q32b. Is Subic Bay an EDCA site?**
-We don't claim it is. D1 is a third Blue port at Subic Bay, standing in for added U.S. access in the Philippines that shortens trips to the South. Which specific facility would play that role is outside the model.
+No. EDCA is the 2014 U.S.–Philippines Enhanced Defense Cooperation Agreement. Its nine sites are Antonio Bautista Air Base, Basa Air Base, Fort Magsaysay, Lumbia Air Base and Benito Ebuen Air Base, plus four added in April 2023: Lal-lo airfield, Naval Base Camilo Osias, Camp Melchor Dela Cruz and Balabac Island (RFA). The U.S. does use Subic's port and airfield, the Marines preposition equipment there, and in 2025 the Navy sought a leased storage facility there (USNI News). D1 is a hypothetical full home port at Subic.
 
 **Q33. Why does the extra port (D1) hurt Red but not help Blue much?**
 Shorter trips to the South let Blue contest Red's valuable southern zones, which costs Red (101 to 16), but more contact means more incidents (war 28%), which eats Blue's gain.
@@ -421,4 +427,6 @@ Have Q6 (numbers are assumptions), Q18 (MIP-BR vs equilibrium), Q26 (restraint v
 - NOAA AOML Hurricane Research Division, Tropical Cyclone FAQ G1 (when is hurricane/typhoon season). https://www.aoml.noaa.gov/hrd/tcfaq/G1.html
 - Hong Kong Observatory, Winter monsoon. https://www.weather.gov.hk/en/education/weather/monsoons/00070-winter-monsoon-from-the-perspective-of-strong-monsoon-signal.html
 - Arms Control Association (April 2008). Hotline to link U.S.-Chinese militaries. https://www.armscontrol.org/act/2008-04/hotline-link-us-chinese-militaries
+- Radio Free Asia (Aug 2023). Philippines EDCA sites. https://www.rfa.org/english/news/southchinasea/philippines-bases-08032023134505.html
+- USNI News (Sept 23, 2025). U.S. Navy wants to open Subic Bay storage facility in the Philippines. https://news.usni.org/2025/09/23/u-s-navy-wants-to-open-subic-bay-storage-facility-in-the-philippines
 - U.S. Indo-Pacific Command (2024). DoD releases Fiscal Year 2023 Freedom of Navigation Report. https://www.pacom.mil/Media/News/Spotlight/Article/3771243/dod-releases-fiscal-year-2023-freedom-of-navigation-report/
