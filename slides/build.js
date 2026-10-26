@@ -131,7 +131,7 @@ s = content("Model", "How the players decide");
 const cards = [
   ["Best response as a MIP", C.accent1, "Each period, choose moves and postures to maximize value of control minus costs, subject to the movement budget, endurance, and an escalation-risk budget:\n\nexpected incidents ≤ ε", "Conservative / moderate / aggressive = ε of 0.05 / 0.15 / 0.40"],
   ["Template game", C.accent4, "Abstract each side to 14 templates: how to split ships North / Center / South, and patrol or assert.\n\nA 14×14 strategic-form game", "Solved with dominance, Nash equilibrium, maximin LP, correlated-equilibrium LP"],
-  ["Policies we compare", C.accent2, "Random moves  |  Rule of thumb\nQuick best response (greedy)\nBest response (MIP)\nNash equilibrium plan\nSafety-first plan (maximin)", "Same random draws and weather for every policy"],
+  ["Policies we compare", C.accent2, "Random moves\nRule of thumb (rule-based)\nQuick best response (greedy)\nBest response (MIP)\nNash equilibrium plan (equilibrium)\nSafety-first plan (maximin)", "Same random draws and weather for every policy"],
 ];
 cards.forEach((c, i) => {
   const x = 0.6 + i * 4.1;
@@ -194,7 +194,7 @@ s.addNotes("(~60 s) Left: Blue loosens its risk budget while Red stays moderate.
 // ---------------------------------------------------------------- 9 RQ2
 s = content("Results", "RQ2: the Nash equilibrium plan is the safest bet against any Red");
 n++;
-s.addChart(pres.charts.BAR, [{ name: "Blue payoff vs. its worst Red opponent", labels: ["Random moves", "Rule of thumb", "Safety-first plan", "Best response (MIP)", "Quick best response", "Nash equilibrium plan"], values: [-319, -184, -221, -144, -137, -116] }], {
+s.addChart(pres.charts.BAR, [{ name: "Blue payoff vs. its worst Red opponent", labels: ["Random moves", "Rule of thumb (rule-based)", "Safety-first plan (maximin)", "Best response (MIP)", "Quick best response (greedy)", "Nash equilibrium plan (equilibrium)"], values: [-319, -184, -221, -144, -137, -116] }], {
   objectName: "rq2chart", x: 0.6, y: 1.35, w: 7.2, h: 4.7, barDir: "bar",
   chartColors: [HEX.accent5, HEX.accent5, HEX.accent5, HEX.accent1, HEX.accent1, HEX.accent4],
   showValue: true, dataLabelPosition: "outEnd", dataLabelFontSize: 12, dataLabelFontFace: "+mn-lt", dataLabelColor: HEX.dk1,
