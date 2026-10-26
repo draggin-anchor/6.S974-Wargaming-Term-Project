@@ -376,7 +376,7 @@ Our reading (not yet tested separately): the MIP best response looks one turn ah
 Partly, yes, and we say so. It also raises Red's payoff (101 to 144) because fewer wars help both. Workshop 2 prices it. The result is still informative: D3 is a real-world version of the mediator from the correlated-equilibrium example.
 
 **Q32a. Why call D3 "de-escalation measures"?**
-It does two things. Once ℓ ≥ 3, a quiet period lowers ℓ with probability 0.5 instead of 0.25; that is the hotline-like part, like the U.S.–China Defense Telephone Link set up in 2008. And assert hazards are halved; that is the CUES-like part, meaning agreed encounter rules and bridge-to-bridge communication. It is bilateral and helps Red too, so "de-escalation measures" covers both effects. The prototype GUI (and the slide 7 screenshot) still labels D3 "Crisis hotline"; it is the same design, renamed in the paper and slides after the code was frozen for this round.
+It does two things. Once ℓ ≥ 3, a quiet period lowers ℓ with probability 0.5 instead of 0.25; that is the hotline-like part, like the U.S.–China Defense Telephone Link set up in 2008. And assert hazards are halved; that is the CUES-like part, meaning agreed encounter rules and bridge-to-bridge communication. It is bilateral and helps Red too, so "de-escalation measures" covers both effects. The slide 7 screenshot was taken before the rename, so it may still show "Crisis hotline"; the current GUI says "De-escalation measures". It is the same design.
 
 **Q32b. Is Subic Bay an EDCA site?**
 We don't claim it is. D1 is a third Blue port at Subic Bay, standing in for added U.S. access in the Philippines that shortens trips to the South. Which specific facility would play that role is outside the model.
