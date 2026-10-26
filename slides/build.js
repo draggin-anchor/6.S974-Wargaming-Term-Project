@@ -141,8 +141,8 @@ cards.forEach((c, i) => {
   T(s, c[2], { x: x + 0.2, y: 2.15, w: 3.5, h: 2.7, fontSize: 15, valign: "top" });
   T(s, c[3], { x: x + 0.2, y: 4.95, w: 3.5, h: 0.9, fontSize: 13, italic: true, color: C.accent5, valign: "top" });
 });
-takeaway(s, "The proposal's strategy types are now one number, ε, inside an optimization the course covered (Lecture 2).");
-s.addNotes("(~60 s) Two ways to decide. Left: each turn a player solves a MIP, the Lecture 2 tool, to pick moves, with a cap on expected incidents, epsilon. This answers the feedback that Q1 is a feasible region. Middle: for equilibrium analysis we shrink each side to 14 templates and solve the 14-by-14 game exactly with the Lecture 3-4 tools. Right: the six policies we compare. All of them see the same random draws.");
+takeaway(s, "The proposal's strategy types are now one number, ε, inside an optimization (a MIP).");
+s.addNotes("(~60 s) Two ways to decide. Left: each turn a player solves a mixed-integer program (MIP) to pick moves, with a cap on expected incidents, epsilon. This answers the feedback that Q1 is a feasible region. Middle: for equilibrium analysis we shrink each side to 14 templates and solve the 14-by-14 game exactly. Right: the six policies we compare. All of them see the same random draws.");
 
 // ---------------------------------------------------------------- 6 chicken
 pres.addSection({ title: "Results" });
@@ -161,7 +161,7 @@ bullets(s, [
   [{ text: "Repetition helps: ", options: { bold: true } }, { text: "with grim trigger, mutual patrolling is a subgame perfect equilibrium for any discount factor above 0.18. Ours is 0.98." }],
 ], { x: 7.0, y: 1.5, w: 5.7, h: 4.5, fontSize: 17 });
 takeaway(s, "Restraint is not stable in a one-shot encounter, but it can be sustained by repeated play or a coordination device.");
-s.addNotes("(~70 s) A small example from our own game. Fix where ships go; each side only chooses patrol or assert. Read the table: asserting against a patroller pays a little, but if both assert, both lose more than 11. So the best reply is to do the opposite of the other side, like the shared-compute example in Lecture 3. Two fixes: a correlated equilibrium, which is what a mediator or hotline can implement, never recommends both asserting; and in the repeated game, grim trigger (both patrol; after any assertion, both switch to the mixed equilibrium for good) makes mutual patrolling a subgame perfect equilibrium whenever the discount factor is above 0.18. Ours is 0.98.");
+s.addNotes("(~70 s) A small example from our own game. Fix where ships go; each side only chooses patrol or assert. Read the table: asserting against a patroller pays a little, but if both assert, both lose more than 11. So the best reply is to do the opposite of the other side. Two fixes: a correlated equilibrium, which is what a mediator or hotline can implement, never recommends both asserting; and in the repeated game, grim trigger (both patrol; after any assertion, both switch to the mixed equilibrium for good) makes mutual patrolling a subgame perfect equilibrium whenever the discount factor is above 0.18. Ours is 0.98.");
 
 // ---------------------------------------------------------------- 7 prototype
 s = content("Results", "The prototype: watch a game play out");
@@ -189,7 +189,7 @@ s.addTable([
 T(s, "Risk-budget game: payoffs (Blue, Red) and war rate. Red bold = the only equilibrium.", { x: 6.9, y: 4.85, w: 5.8, h: 0.5, fontSize: 12, italic: true, color: C.accent5 });
 T(s, "Raising Blue's budget from 0.02 to 0.15 lifts its control a lot; beyond 0.25 it barely moves.", { x: 0.6, y: 5.55, w: 6.0, h: 0.5, fontSize: 13, color: C.accent5 });
 takeaway(s, "Both sides choose aggressive, giving the highest war rate (34%): a prisoner's dilemma.");
-s.addNotes("(~60 s) Left: Blue loosens its risk budget while Red stays moderate. Control rises fast up to about 0.15, then flattens, while war risk keeps rising. Right: both sides choose a budget. Aggressive is the best reply to anything, for both, so the only equilibrium is aggressive-aggressive, with the highest war rate, 34%. That is a prisoner's dilemma, Lecture 3. Restraint has to come from repetition or coordination, as in the previous example.");
+s.addNotes("(~60 s) Left: Blue loosens its risk budget while Red stays moderate. Control rises fast up to about 0.15, then flattens, while war risk keeps rising. Right: both sides choose a budget. Aggressive is the best reply to anything, for both, so the only equilibrium is aggressive-aggressive, with the highest war rate, 34%. That is a prisoner's dilemma. Restraint has to come from repetition or coordination, as in the previous example.");
 
 // ---------------------------------------------------------------- 9 RQ2
 s = content("Results", "RQ2: the Nash equilibrium plan is the safest bet against any Red");
@@ -228,7 +228,7 @@ s.addChart(pres.charts.BAR, [
 });
 T(s, "War rate (normal weather): D0 20%, D1 28%, D2 23%, D3 5%. The hotline was given no cost yet.", { x: 6.8, y: 5.0, w: 5.9, h: 0.4, fontSize: 13, color: C.accent5 });
 takeaway(s, "The plan that is best on average is also best in the worst weather. The crisis hotline is the best design and cuts war about 4×.");
-s.addNotes("(~70 s) Robustness in the Lecture 1 sense: expected payoff over the four weather scenarios, and worst case. Left: the policy ranking does not change across weather; the top two plans stay on top. Bad weather slightly helps Blue here, because rough seas weaken Red's coast-guard hulls. Right: of the three redesigns, the crisis hotline is best on average and in the worst case, and cuts war about four times. Caveat: we gave it no cost yet, and it also helps Red, so it is a joint gain.");
+s.addNotes("(~70 s) Robustness here means two numbers: expected payoff over the four weather scenarios, and worst case. Left: the policy ranking does not change across weather; the top two plans stay on top. Bad weather slightly helps Blue here, because rough seas weaken Red's coast-guard hulls. Right: of the three redesigns, the crisis hotline is best on average and in the worst case, and cuts war about four times. Caveat: we gave it no cost yet, and it also helps Red, so it is a joint gain.");
 
 // ---------------------------------------------------------------- 11 caveats
 s = content("Results", "What the evidence does and does not show");
