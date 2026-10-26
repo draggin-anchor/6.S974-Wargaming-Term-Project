@@ -26,14 +26,14 @@ Sequence of play in each period (see Game.step):
     4. strength / control update  5. incidents + escalation  6. stage payoff
     7. termination (war when ell reaches L, or t = T)
 
-Course methods used (Lectures 1-9 only):
-    * per-period best response = mixed-integer program (Lecture 2), solved with
-      gurobipy as in the lecture code (policy 'mip_br');
+Methods used:
+    * per-period best response = mixed-integer program, solved with
+      gurobipy (policy 'mip_br');
     * template game in strategic form: best responses, iterated elimination of
       strictly dominated strategies, pure Nash equilibria, maximin LP and
-      correlated-equilibrium LP (Lectures 3-4);
+      correlated-equilibrium LP;
     * weather as Nature's scenario omega with probabilities, evaluated by
-      expected and worst-case (robust) performance (Lecture 1).
+      expected and worst-case (robust) performance.
 
 The simulator itself uses only the Python standard library.  gurobipy is
 imported lazily and is needed only for 'mip_br', 'maximin' and the LP parts of
@@ -92,7 +92,7 @@ PARAMS = {
     'storm_len': 3, 'rough_ccg': 0.5, 'rough_q': 0.7,
 }
 
-# Weather scenarios omega in Omega (Lecture 1): per region and period, a storm
+# Weather scenarios omega in Omega: per region and period, a storm
 # starts with probability p_storm (if the region is not already in a storm) and
 # otherwise the sea is rough with probability p_rough.  pi = scenario weight used
 # for the expected (stochastic) evaluation.
@@ -1031,7 +1031,7 @@ def plan_value(obs, moves, post):
 
 class MIPBRPolicy(Policy):
     """Exact per-period best response: the mixed-integer program of Section 3 of
-    the report, solved with gurobipy (Lecture 2).
+    the report, solved with gurobipy.
 
     Given the believed opponent counts x_hat (and last-seen postures) and the
     current sea state, choose binary moves y_{s,w} (ship s goes to node w, one
@@ -1124,7 +1124,7 @@ class MIPBRPolicy(Policy):
 
 
 # ============================================================================
-# 7.  TEMPLATE GAME (strategic form; Lectures 3-4)
+# 7.  TEMPLATE GAME (strategic form)
 # ============================================================================
 
 SPLITS = [(.6, .2, .2), (.2, .6, .2), (.2, .2, .6), (.4, .4, .2), (.4, .2, .4), (.2, .4, .4), (.34, .33, .33)]
@@ -1146,7 +1146,7 @@ class MetaGame:
     The game is general-sum (V^B != V^R, and the incident penalty hits both).
     CB is the control-only part (zero-sum when Red receives -CB).
 
-    Solution methods, all from Lectures 3-4:
+    Solution methods:
       best_responses / pure_nash  -- s* is a pure NE iff s*_i in BR_i(s*_-i) for both players
       iesds                       -- iterated elimination of strictly dominated (pure) strategies
       maximin_lp(A)               -- max z s.t. z <= sum_a sigma(a) A[a][b] for all b (the maximin LP);
@@ -1216,7 +1216,7 @@ class MetaGame:
     # ------------------------------------------------------------------- LPs
     @staticmethod
     def maximin_lp(A):
-        """Maximin LP of Lecture 3 for the row player of payoff matrix A:
+        """Maximin LP for the row player of payoff matrix A:
             max z  s.t.  z <= sum_a sigma(a) A[a][b]  for all columns b,  sigma in the simplex.
         Returns (sigma, z)."""
         import gurobipy as gp
@@ -1232,7 +1232,7 @@ class MetaGame:
         return [v.X for v in sig], z.X
 
     def ce_lp(self):
-        """Correlated equilibrium maximizing total expected payoff (Lecture 4 LP):
+        """Correlated equilibrium maximizing total expected payoff (an LP):
             max sum_s pi(s) (u_B(s) + u_R(s))
             s.t. sum_b pi(a,b) [u_B(a,b) - u_B(a',b)] >= 0   for all a, a'
                  sum_a pi(a,b) [u_R(a,b) - u_R(a,b')] >= 0   for all b, b'

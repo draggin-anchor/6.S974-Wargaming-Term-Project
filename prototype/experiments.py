@@ -77,7 +77,7 @@ def pm(s, key='blue_mean', se='blue_se', fmt='.1f'):
 
 
 # ---------------------------------------------------------------------------
-# Section 4.1: a 2x2 posture game cut out of the template game (Lectures 3-6)
+# Section 4.1: a 2x2 posture game cut out of the template game
 # ---------------------------------------------------------------------------
 def chicken():
     """Fix the force splits that survive iterated elimination of strictly
