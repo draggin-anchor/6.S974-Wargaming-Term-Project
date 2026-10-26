@@ -30,7 +30,7 @@ Outputs go to `results/` (CSV and markdown tables) and `results/figures/`.
 | `--blue`, `--red` | `random` (benchmark), `conservative` / `moderate` / `aggressive` (rule-based), `greedy_br` (heuristic for the MIP), `mip_br` (exact MIP best response), `equilibrium` (pure Nash equilibrium of the template game), `maximin` (maximin mixed strategy of the template game) |
 | `--epsB`, `--epsR` | escalation-risk budget of `greedy_br` / `mip_br` (expected incidents per period; default 0.15). Conservative / moderate / aggressive = 0.05 / 0.15 / 0.40 |
 | `--weather` | `calm`, `nominal`, `typhoon`, `extreme` (scenario omega: storm and rough-sea frequencies) |
-| `--design` | `D0` baseline, `D1` dispersed basing (Subic/EDCA port), `D2` redundant sensing, `D3` crisis hotline |
+| `--design` | `D0` baseline, `D1` dispersed basing (Subic/EDCA port), `D2` redundant sensing, `D3` de-escalation measures |
 | `--attacks` | `jamming`, `blockade`, `deception` (implemented for Workshop 2; not used in the Workshop 1 results) |
 | `--seed`, `--seeds`, `--T` | first seed, number of seeds, horizon in periods (1 period = 2 days, default 60) |
 
@@ -50,8 +50,8 @@ Outputs go to `results/` (CSV and markdown tables) and `results/figures/`.
 
 Plan names: Random moves (`random`), Rule of thumb: cautious / balanced / bold (`conservative` / `moderate` /
 `aggressive`), Quick best response (`greedy_br`), Best response (`mip_br`), Nash equilibrium plan
-(`equilibrium`), Safety-first plan (`maximin`). Designs: D0 Baseline, D1 Extra port in Philippines,
-D2 Extra surveillance, D3 Crisis hotline. Weather: Calm seas, Normal season, Typhoon season, Extreme weather
+(`equilibrium`), Safety-first plan (`maximin`). Designs: D0 Baseline, D1 Extra port in Philippines (dispersed basing),
+D2 Extra surveillance (redundant sensing), D3 De-escalation measures. Weather: Calm seas, Nominal weather, Typhoon weather, Extreme weather
 (`calm`, `nominal`, `typhoon`, `extreme`).
 
 ## Where things are in `wargame_gui.py`

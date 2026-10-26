@@ -1,7 +1,7 @@
 # Workshop 2 ideas
 
 Working list of ideas for Workshop 2, each fleshed out enough to decide whether to build it.
-Nothing here is in the report or the code yet. Version 5, Mon Oct 26, 2026 (6:55 PM ET).
+Nothing here is in the report or the code yet. Version 6, Mon Oct 26, 2026 (7:55 PM ET).
 
 Each idea has the same four parts: **what it is**, **how it enters the game** (state, actions,
 dynamics, payoff, MIP), **what it touches** (code and experiments), and **open questions** for Sean.
@@ -12,7 +12,7 @@ All numbers are proposals. Learning methods stay "once taught".
 | # | Idea | From | Size | Suggested milestone |
 |---|---|---|---|---|
 | 1 | Oilers that follow each side's densest regions | Sean, Oct 26 | Medium | Nov 3 |
-| 2 | Movement budget $F_i$: keep, tie to oilers, or drop | Report review, Oct 26 | Small (decided with 1) | Nov 3 |
+| 2 | Reformulate the movement budget $F_i$ with oilers | Report review, Oct 26 | Small (decided with 1) | Nov 3 |
 | 3 | LCS as a second Blue ship type | Report review, Oct 23 | Medium | Nov 3 |
 | 4 | FONOP as its own Blue posture {P, A, F} | Sean, Oct 23 | Medium | Nov 17 |
 | 5 | Separate CCG/militia ports | Report review, Oct 26 | Small | Nov 3 |
@@ -97,42 +97,51 @@ Sean is the right person to set that number.
 5. Realistic endurance values: how many two-day periods can a DDG (and later an LCS) stay on station
    without refueling?
 
-## 2. Movement budget $F_i$: keep it, tie it to oilers, or drop it
+## 2. Reformulate the movement budget $F_i$ with oilers
 
-**What it is:** $F_i$ caps how many ship moves a side makes per period (8 Blue, 10 Red). Sean's Oct 26
-wording in the report: the theater-wide movement budget $F_i$ stands in for operational requirements and
-station-keeping (each ship's own fuel is its endurance). So $F_i$ is no longer framed as fuel or oiler
-capacity, which removes most of the overlap with endurance. §6 still lists three options.
+**What it is:** $F_i$ caps how many ship moves a side makes per period (8 Blue, 10 Red). In the report
+(§3.3) it stands in for operational requirements and station-keeping; each ship's own fuel is its
+endurance. The Workshop 2 plan (§6, Sean's wording) is to *reformulate the movement budget $F_i$ with
+considerations for oilers*, so this idea is built together with idea 1.
 
-**Data from the Workshop 1 code (same 40-game check as above):** the budget rarely binds. Blue uses on
+**Data from the Workshop 1 code (same 40-game check as idea 1):** the budget rarely binds. Blue uses on
 average about 4 of its 8 moves and hits the cap in 10% of periods (19% for greedy best response); Red
-uses about 6 of 10 and hits the cap in 11 to 12% of periods. The MIP best response was not in this check
-(this container has no Gurobi license), so it should be repeated for MIP-BR.
+uses about 6 of 10 and hits the cap in 11 to 12% of periods. MIP-BR was not in this check (no Gurobi
+license in this container), so it should be repeated for MIP-BR. If the new $F_i$ is meant to matter,
+its base value has to be lower than today's.
 
-**Options:**
+**Proposed formulation: regional budgets that oilers raise.**
+
+- Split the budget by region: $F^t_{i,r}=f_i+g\,o^t_{i,r}$, where $f_i$ is a small base allowance per
+  region (routine station-keeping), $o^t_{i,r}$ is the number of player $i$'s oilers in region $r$ (idea 1)
+  and $g$ is the extra moves one oiler supports. A move is charged to the region the ship sails from;
+  moves out of home ports are charged to a separate port allowance.
+- Constraint, replacing the single fuel line in §3.3 and in the MIP (§3.6):
+  $$\textstyle\sum_{k}\sum_{u\in r}\sum_{v}f^t_{k,uv}\le F^t_{i,r}\quad\text{for each region } r.$$
+  Still linear, so the MIP stays a MIP; only one constraint becomes three (four with ports).
+- Effect: a region with an oiler is one where the side can reposition and hold station more freely.
+  Since oilers go to the side's two densest regions, the third region is both thinly held and slow to
+  reinforce, which is the trade-off the allocation decision should face.
+- Endurance stays per ship. Oilers can refuel endurance as in idea 1, or act only through the budget;
+  doing both is the fuller version, doing only the budget is the simpler first step.
+- Proposed values to start: $f_\B=2$, $f_\Rd=3$, $g=2$, port allowance 2 per side. All assumptions, and
+  all go into the sensitivity analysis (idea 7).
+
+**Alternatives considered:**
 
 | Option | What changes | For | Against |
 |---|---|---|---|
-| A. Keep $F_i$ | Nothing | No rerun needed for this item | Two fuel rules for one thing; hard to defend the values |
-| B. Tie to oilers | $F_i$ becomes $F_i^0+\sum_j Q$ only in oiler regions, or each oiler adds moves in its region | Makes logistics one story | More rules, more parameters to defend |
-| C. Drop $F_i$ | Delete the fuel constraint from the MIP and the engine; keep the move cost $\gamma$ in the payoff | Simplest; endurance plus oilers become the only fuel limit | Allows sudden mass moves (a surge of every ship at once) |
+| Regional budgets raised by oilers (proposed) | As above | Ties $F_i$ to logistics; stays linear | Three or four budget lines instead of one |
+| One theater-wide budget raised by oilers | $F^t_i=F^0_i+g\cdot(\text{oilers in theater})$ | Smallest change | Oiler location does not matter, which loses Sean's density idea |
+| Keep $F_i$ as is | Nothing | No rerun for this item | Rarely binds, so it does little |
+| Drop $F_i$ | Endurance and oilers are the only limits | Simplest | Allows every ship to move at once |
 
-**Recommendation (updated after Sean's rewording):** keep $F_i$ as the operational-tempo cap (option A),
-and let the oilers from idea 1 act on endurance only, so the two rules stay separate: $F_i$ limits how
-much the fleet can reposition, endurance and oilers limit how long ships stay out. Two follow-ups:
-(1) because $F_i$ binds rarely, either lower it to a value that reflects station-keeping demands or show
-in the sensitivity sweep (idea 7) that results do not depend on it; (2) the §6 plan line that offers
-"tie it to oiler capacity" no longer matches the new §3.3 wording and could be reworded to match.
-Option C (drop it) remains the fallback if the team wants fewer parameters.
+**What it touches:** `PARAMS['F']` (becomes `f_base`, `g_oiler`, `f_port`), the budget loop in
+`Game.step` (charge each move to its region), `Obs.fuel` (per region), the fuel constraint in
+`MIPBRPolicy` (one per region) and the greedy and rule-based policies, Table 1, and §3.3 and §3.6.
 
-**How it enters the game:** under C, the fuel line leaves both the constraints in §3.3 and the MIP in §3.6,
-and "Forced moves use fuel first" disappears from the endurance rule. Table 1 loses a row.
-
-**What it touches:** `PARAMS['F']`, the move resolution in `Game.step` (budget loop), `Obs.fuel`, the
-fuel constraint in `MIPBRPolicy` and the greedy and rule-based policies, and the report text above.
-
-**Open question:** is a surge of every ship in one period realistic enough to allow, or should port
-throughput limit it?
+**Open questions for Sean:** is a region the right unit, or should the budget follow the oiler's own
+zone? Should moves out of port count against the oilers at all? Values for $f_i$ and $g$.
 
 ## 3. LCS as a second Blue ship type
 

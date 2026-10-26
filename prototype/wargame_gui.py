@@ -22,7 +22,7 @@ Notation used throughout the code (matches the Workshop 1 report):
 
 Sequence of play in each period (see Game.step):
     0. Nature draws the sea state of each region (weather scenario omega)
-    1. observations  2. simultaneous moves + postures  3. moves resolve (fuel budget)
+    1. observations  2. simultaneous moves + postures  3. moves resolve (movement budget)
     4. strength / control update  5. incidents + escalation  6. stage payoff
     7. termination (war when ell reaches L, or t = T)
 
@@ -69,7 +69,7 @@ PARAMS = {
     'D_max': {'DDG': 10, 'PLAN': 8, 'CCG': 6},
     # strength weights w_k, assert multiplier alpha, share smoothing kappa, control update lambda
     'w': {'DDG': 1.0, 'PLAN': 1.0, 'CCG': 0.6}, 'alpha': 1.5, 'kappa': 1.0, 'lam': 0.3,
-    # fuel budgets F_i (edge traversals per period)
+    # movement budgets F_i (edge traversals per period)
     'F': {'B': 8, 'R': 10},
     # incident hazard: h = (h0 + hA_B 1[p_B=A] + hA_R 1[p_R=A]) * min(S_B,S_R) * (1 + ell/2)
     # (calibrated so that war is rare but possible under moderate play: about 5-15% of games)
@@ -301,7 +301,7 @@ class Obs:
         self.closed = set(game.closed)
         self.sea = dict(game.sea)                       # public sea state per region
         self.blocked = set(game.blocked) if player == 'B' else set()
-        # fuel left for discretionary moves (forced-return moves are charged first)
+        # movement budget left for discretionary moves (forced-return moves are charged first)
         n_forced_moves = sum(1 for sid, dest in forced.items() if dest != game.ship_by_id[sid].loc)
         self.fuel = max(0, game.P['F'][player] - n_forced_moves)
 
@@ -576,7 +576,7 @@ class Game:
             if i == 'R' and 'blockade' in self.attacks:
                 m, p = self._blockade_override(m, p, forced['R'])
             moves[i], post[i] = m, p
-        # ---- 3. resolve moves under the fuel budget F_i (forced moves charged first)
+        # ---- 3. resolve moves under the movement budget F_i (forced moves charged first)
         for i in 'BR':
             budget = P['F'][i]
             plan = {}
@@ -589,7 +589,7 @@ class Game:
                 if sid in forced[i] or dest == s.loc or dest not in self.legal_dests(s):
                     continue
                 if budget <= 0:
-                    ev.append(f"{i}: fuel budget exhausted, {s.kind}#{sid} holds at {s.loc}")
+                    ev.append(f"{i}: movement budget exhausted, {s.kind}#{sid} holds at {s.loc}")
                     continue
                 plan[sid] = dest
                 budget -= 1
@@ -683,7 +683,7 @@ class Game:
 # A policy maps an observation to (moves, postures):
 #   moves:    {ship_id: destination_node}  for free (non-forced) ships, in priority order
 #   postures: {contested_node: 'P' | 'A'}
-# The engine validates legality and enforces the fuel budget, so a policy that
+# The engine validates legality and enforces the movement budget, so a policy that
 # returns an illegal move simply has that ship hold position.
 
 def risk_budget(eps, ell, P):
@@ -894,7 +894,7 @@ class GreedyBRPolicy(Policy):
 
         J = sum_v V_v^i sigma_i lam H phi_v(x, x_hat) - gamma * moves - Lambda * E[incidents]
 
-    subject to one-edge moves, forced returns, the fuel budget F_i and the risk
+    subject to one-edge moves, forced returns, the movement budget F_i and the risk
     budget sum_v p_v <= epsilon (moderate, 0.15, tightened as ell rises).  The exact problem is a small
     MIP; here it is solved approximately by greedy marginal-gain assignment of
     ships followed by a few rounds of single-ship local search, with a posture
@@ -1040,7 +1040,7 @@ class MIPBRPolicy(Policy):
 
         max  sum_v sum_(n,p) a_v(n,p) b_{v,(n,p)} - gamma sum_{s, w != loc(s)} y_{s,w}
         s.t. sum_w y_{s,w} = 1                                    (each free ship one destination)
-             sum_{s, w != loc(s)} y_{s,w} <= F_i - forced moves   (fuel budget)
+             sum_{s, w != loc(s)} y_{s,w} <= F_i - forced moves   (movement budget)
              x_{k,v} = fixed_{k,v} + sum_{s of type k} y_{s,v}   (flow conservation)
              sum_(n,p) b_{v,(n,p)} = 1,  sum_(n,p) n_k b_{v,(n,p)} = x_{k,v}
              sum_v sum_(n,p) rho_v(n,p) b_{v,(n,p)} <= eps_i (1 - ell/L)   (escalation-risk budget)
@@ -1430,7 +1430,7 @@ def plain_events(texts):
                         .replace('(ell = L)', '').replace('-W', 'the war penalty'))
     for i in 'BR':
         if home[i]:
-            out.insert(0, f"{home[i]} {side[i]} ship(s) low on fuel, heading home")
+            out.insert(0, f"{home[i]} {side[i]} ship(s) low on endurance, heading home")
     return out
 
 
@@ -1466,14 +1466,14 @@ def launch_gui():
     }
     DESIGN_LABELS = {
         'D0': 'D0 Baseline',
-        'D1': 'D1 Extra port in Philippines',
-        'D2': 'D2 Extra surveillance',
+        'D1': 'D1 Extra port in Philippines (dispersed basing)',
+        'D2': 'D2 Extra surveillance (redundant sensing)',
         'D3': 'D3 De-escalation measures',
     }
     WEATHER_LABELS = {
         'calm': 'Calm seas',
-        'nominal': 'Normal season',
-        'typhoon': 'Typhoon season',
+        'nominal': 'Nominal weather',
+        'typhoon': 'Typhoon weather',
         'extreme': 'Extreme weather',
     }
     LEVEL_NAMES = ['peace', 'tension', 'friction', 'crisis', 'brink', 'WAR']
@@ -1493,7 +1493,7 @@ def launch_gui():
         "Orange ring = incident this turn. Shaded box = rough sea or storm (no one operates in a "
         "storm). 'Blue view' / 'Red view' show what each side believes; ~n[a] means n ships "
         "last seen a turns ago.\n\n"
-        "SCORE: each side earns points every turn for the waters it controls, minus fuel used "
+        "SCORE: each side earns points every turn for the waters it controls, minus movement cost "
         "and minus the escalation level. Higher is better.")
 
     def project(lon, lat):
@@ -1942,7 +1942,7 @@ def format_summary(s):
             f"  Red  payoff  mean {s['red_mean']:8.2f}  (std {s['red_std']:7.2f}, s.e. {s['red_se']:5.2f})\n"
             f"  control share {s['control_share']:+.3f} | war rate {s['war_rate']:.2f} (mean war t {s['war_t_mean']:.1f})"
             f" | max ell {s['max_ell']:.2f} | mean ell {s['mean_ell']:.2f}\n"
-            f"  incidents {s['incidents']:.2f} | fuel B {s['blue_fuel']:.1f} R {s['red_fuel']:.1f}")
+            f"  incidents {s['incidents']:.2f} | moves B {s['blue_fuel']:.1f} R {s['red_fuel']:.1f}")
 
 
 def print_trace(blue, red, design, attacks, seed, T, weather='calm'):
