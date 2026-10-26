@@ -22,6 +22,7 @@ and weather (Nature) tests how robust each strategy and design is. The Workshop 
 | `prototype/` | Simulator and GUI (`wargame_gui.py`), experiment scripts, and all Workshop 1 results (`results/`); see `prototype/README.md` |
 | `report/` | LaTeX source of the Workshop 1 report (`pdflatex report.tex`, twice) |
 | `slides/` | Script that builds the Workshop 1 slides (`npm install && node build.js`) |
+| `planning/` | Planning notes: `workshop2-ideas.md` (ideas and plan for Workshop 2) |
 | `course-materials/` | Instructor handouts: wargame scope sheet and deliverable instructions |
 
 ## Reproducing the Workshop 1 results
