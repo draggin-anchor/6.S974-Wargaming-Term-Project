@@ -75,7 +75,7 @@ One Blue DDG meets one Red CCG hull, calm seas, ℓ = 1, control starts at 0.
 Two unitary players (no allies as players); control is a force-ratio index; incidents are the only path to war; beliefs are last-seen counts; best responses look one period ahead; every number is an assumption.
 
 ### Notation cheat sheet (full Table 1)
-The paper now keeps only the parameter half of Table 1. Both halves are here. A printable copy is `Table1_full_notation.pdf`, stored next to these notes.
+The paper now keeps only the parameter half of Table 1. Both halves are here. A printable copy is `02-workshop1-notation-table.pdf`, stored next to these notes.
 
 **State, beliefs and choices** (removed from the paper)
 
