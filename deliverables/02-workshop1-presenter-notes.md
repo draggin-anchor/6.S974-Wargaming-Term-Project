@@ -284,6 +284,15 @@ One line: random is the baseline, rule-based is a sensible human, greedy and the
 
 Both template plans patrol when ℓ > 3 and drop any assertion that breaks their risk budget.
 
+**Q17e. Step by step, how does each policy pick its moves?**
+The key contrast: greedy and the MIP plan one move ahead and re-decide every period, while the rule of thumb and the two template plans pick a destination and walk to it over several periods.
+- *Random:* each free ship stays or moves to a random legal neighbor (50/50); posture is a coin flip per zone. It has no risk budget, and the engine drops moves over F.
+- *Rule of thumb (moderate, ε = 0.15):* (1) repeatedly assigns the best ship–zone pair, scoring the control gain of one more hull, discounted for distance, minus fuel, divided by (1 + 0.5 × believed enemy strength), and stops when the best score is below 0.05; targets can be several hops away. (2) Assigned ships step one hop toward their targets, highest score first, up to F. An unassigned ship goes home if it is in a zone where the enemy was seen, and otherwise stays. (3) It asserts only if ℓ ≤ 2 and its own strength exceeds the believed enemy strength. (4) While risk exceeds ε(1 − ℓ/L), it flips the riskiest asserting zone to patrol, or if none is asserting, pulls one hull out of the riskiest zone.
+- *Quick best response (greedy):* see Q21b.
+- *Best response (MIP):* lists one-edge moves and each zone's options, then Gurobi maximizes value minus fuel subject to the movement budget, option consistency, and risk ≤ ε(1 − ℓ/L) + slack.
+- *Nash equilibrium plan:* uses a fixed template, the higher-total-payoff pure equilibrium of the template game. Free ships are split by region per the template, then across zones in proportion to value, and the nearest reachable ship is matched to each slot. Ships step one hop toward their slots, nearest first, up to F. Occupied zones take the template's posture (patrol if ℓ > 3), and the riskiest assertions flip to patrol until risk fits ε(1 − ℓ/L).
+- *Safety-first plan (maximin):* the same, but every 3 periods it draws a new template from its maximin mixed strategy.
+
 **★ Q18. Is MIP-BR an equilibrium?**
 No. It is a one-period best response to beliefs about where the enemy is. Equilibrium analysis is done on the 14 × 14 template game, and the "Nash equilibrium plan" plays that equilibrium in the full game.
 
