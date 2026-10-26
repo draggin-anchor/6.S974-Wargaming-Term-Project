@@ -130,7 +130,7 @@ s.addNotes("(~70 s) Walk the timeline top to bottom: this is one two-day turn. T
 s = content("Model", "How the players decide");
 const cards = [
   ["Best response as a MIP", C.accent1, "Each period, choose moves and postures to maximize value of control minus costs, subject to the movement budget, endurance, and an escalation-risk budget:\n\nexpected incidents ≤ ε", "Conservative / moderate / aggressive = ε of 0.05 / 0.15 / 0.40"],
-  ["Template game", C.accent4, "Abstract each side to 14 templates: how to split ships North / Center / South, and patrol or assert.\n\nA 14×14 strategic-form game", "Solved with dominance, Nash equilibrium, maximin LP, correlated-equilibrium LP"],
+  ["Template game", C.accent4, "Abstract each side to 14 templates: how to split ships North / Center / South, and patrol or assert.\n\nA 14×14 strategic-form game", "Solved with iterated elimination of strictly dominated strategies (IESDS), Nash equilibrium, maximin LP, correlated-equilibrium LP"],
   ["Policies we compare", C.accent2, "Random moves\nRule of thumb (rule-based)\nQuick best response (greedy)\nBest response (MIP)\nNash equilibrium plan (equilibrium)\nSafety-first plan (maximin)", "Same random draws and weather for every policy"],
 ];
 cards.forEach((c, i) => {

@@ -119,7 +119,7 @@ ATTACKS = ['jamming', 'blockade', 'deception']
 NODES = {
     'YOK': ('Yokosuka', 139.7, 35.3, 'home', 'B'),
     'GUA': ('Guam', 144.8, 13.4, 'home', 'B'),
-    'PHL': ('Subic/EDCA', 120.3, 14.8, 'home', 'B'),        # design D1 only
+    'PHL': ('Subic Bay', 120.3, 14.8, 'home', 'B'),        # design D1 only
     'NBO': ('Ningbo', 121.9, 29.9, 'home', 'R'),
     'SAN': ('Sanya', 109.5, 18.2, 'home', 'R'),
     'SEN': ('Senkaku/ECS', 123.5, 25.8, 'contested', None),
@@ -214,7 +214,7 @@ def hazard_rate(P, design, ell, S_B, S_R, pB, pR, plan_share):
     """Incident hazard h_v = (h0 + hA_B 1[p_B=A] + hA_R,v 1[p_R=A]) * min(S_B,S_R) * (1 + ell/2).
 
     hA_R,v = 0.036 * (PLAN share of Red strength) + 0.012 * (CCG share).
-    Design D3 (crisis hotline): assert hazards halved when ell >= 3.
+    Design D3 (de-escalation measures): assert hazards halved when ell >= 3.
     """
     if S_B <= 0 or S_R <= 0:
         return 0.0
@@ -1468,7 +1468,7 @@ def launch_gui():
         'D0': 'D0 Baseline',
         'D1': 'D1 Extra port in Philippines',
         'D2': 'D2 Extra surveillance',
-        'D3': 'D3 Crisis hotline',
+        'D3': 'D3 De-escalation measures',
     }
     WEATHER_LABELS = {
         'calm': 'Calm seas',

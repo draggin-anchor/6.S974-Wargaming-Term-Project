@@ -72,11 +72,11 @@ One Blue DDG meets one Red CCG hull, calm seas, ℓ = 1, control starts at 0.
 - **β is not a linearization.** The option list handles the nonlinearity; β handles time (Q21).
 
 ### The template game (§3.7) and the six policies
-- The full game is far too big to solve for equilibrium. So we shrink it: each side picks one of **14 templates** = 7 ways to split ships North/Center/South × patrol or assert everywhere. Payoff = settled control (c = φ) minus incident cost, calm seas, ℓ = 1. That is a 14 × 14 strategic-form game, solved with dominance (IESDS), pure Nash enumeration, the maximin LP and the correlated-equilibrium LP.
+- The full game is far too big to solve for equilibrium. So we shrink it: each side picks one of **14 templates** = 7 ways to split ships North/Center/South × patrol or assert everywhere. Payoff = settled control (c = φ) minus incident cost, calm seas, ℓ = 1. That is a 14 × 14 strategic-form game, solved with iterated elimination of strictly dominated strategies (IESDS), pure Nash enumeration, the maximin LP and the correlated-equilibrium LP.
 - **Policies compared** (slide name, then the paper's name in brackets): Random moves; Rule of thumb (rule-based, the moderate commander); Quick best response (greedy, no solver); Best response (MIP); Nash equilibrium plan (equilibrium: plays a pure NE template; of the two pure NE it uses the one with the higher total payoff, our choice); Safety-first plan (maximin: the template mix that guarantees the best payoff whatever the opponent plays, redrawn every 3 periods). Same random draws and weather for every policy.
 
 ### Blue redesigns (§3.8)
-- **D1 extra port:** Subic Bay (EDCA access), linked to Scarborough, Luzon, Second Thomas. Cost 0.3/period. Structural change.
+- **D1 extra port:** a third Blue port at Subic Bay, linked to Scarborough, Luzon, Second Thomas. Cost 0.3/period. Structural change.
 - **D2 extra surveillance:** Blue detects in every zone with probability ≥ 0.6, even in bad weather. Cost 0.5/period.
 - **D3 de-escalation measures** (hotline plus CUES-style encounter rules): at ℓ ≥ 3, a quiet period lowers ℓ with probability 0.5 instead of 0.25, and assert hazards are halved. **No cost yet** and it helps Red as much as Blue.
 
@@ -377,6 +377,9 @@ Partly, yes, and we say so. It also raises Red's payoff (101 to 144) because few
 
 **Q32a. Why call D3 "de-escalation measures"?**
 It does two things. Once ℓ ≥ 3, a quiet period lowers ℓ with probability 0.5 instead of 0.25; that is the hotline-like part, like the U.S.–China Defense Telephone Link set up in 2008. And assert hazards are halved; that is the CUES-like part, meaning agreed encounter rules and bridge-to-bridge communication. It is bilateral and helps Red too, so "de-escalation measures" covers both effects. The prototype GUI (and the slide 7 screenshot) still labels D3 "Crisis hotline"; it is the same design, renamed in the paper and slides after the code was frozen for this round.
+
+**Q32b. Is Subic Bay an EDCA site?**
+We don't claim it is. D1 is a third Blue port at Subic Bay, standing in for added U.S. access in the Philippines that shortens trips to the South. Which specific facility would play that role is outside the model.
 
 **Q33. Why does the extra port (D1) hurt Red but not help Blue much?**
 Shorter trips to the South let Blue contest Red's valuable southern zones, which costs Red (101 to 16), but more contact means more incidents (war 28%), which eats Blue's gain.
