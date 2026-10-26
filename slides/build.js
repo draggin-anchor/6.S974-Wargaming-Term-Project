@@ -208,7 +208,7 @@ bullets(s, [
   [{ text: "Safety-first plan ", options: { bold: true } }, { text: "is the most cautious (war ≤ 8%) but gives up the most control." }],
   [{ text: "Quick vs MIP: ", options: { bold: true } }, { text: "the quick heuristic matches the MIP 67% of the time but breaks the risk budget 14% of the time." }],
 ], { x: 8.1, y: 1.45, w: 4.6, h: 4.7, fontSize: 16 });
-s.addNotes("(~60 s) Each Blue policy plays three Red policies, 200 games each. The bar is Blue's payoff against its worst opponent. The Nash equilibrium plan has the best worst case, and half the war rate of the MIP best response. Best responses do well against weak opponents but escalate. The safety-first plan is cautious but gives up control.");
+s.addNotes("(~60 s) Each Blue policy plays three Red policies, 200 games each. The bar is Blue's payoff against its worst opponent. The Nash equilibrium plan has the best worst case, and half the war rate of the MIP best response. Best responses do well against weak opponents but escalate. The safety-first plan is cautious but gives up control. Differences under about 20 points are ties.");
 
 // ---------------------------------------------------------------- 10 RQ3
 s = content("Results", "RQ3: the best strategy holds up in bad weather");
@@ -249,6 +249,7 @@ col(6.8, "Not yet shown", C.accent2, [
   "Policies look only one period ahead",
   "War penalty may be too small. The top-payoff policy also has the most wars",
   "De-escalation measures have no cost yet, so part of their win is built in",
+  "Differences under about 20 payoff points are ties",
 ]);
 s.addNotes("(~45 s) Be direct about limits. Left is what the runs support. Right is what they do not show. Values are assumptions, policies look one turn ahead, the war rate depends heavily on a few parameters, and the de-escalation result is partly built in. A sensitivity sweep is the first item for Workshop 2.");
 
