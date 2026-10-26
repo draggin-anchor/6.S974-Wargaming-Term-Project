@@ -296,9 +296,9 @@ The key contrast: greedy and the MIP plan one move ahead and re-decide every per
 **Q17f. How does each policy decide between patrol and assert?**
 Asserting multiplies a side's strength by 1.5, which means more control, but it raises the incident hazard. Every policy except random computes risk assuming the opponent keeps its last-seen posture (patrol if never seen).
 - *Random:* a coin flip, with no budget.
-- *Rule of thumb:* asserts only if its own strength exceeds the believed enemy strength and ℓ ≤ 2, then flips the riskiest assertions back to patrol until risk ≤ ε(1 − ℓ/L).
+- *Rule of thumb:* asserts only if its own strength exceeds the believed enemy strength (both counted without the assert multiplier, so the enemy's posture is ignored here) and ℓ ≤ 2, then flips the riskiest assertions back to patrol until risk ≤ ε(1 − ℓ/L).
 - *Greedy:* in each zone, scores patrol and assert with V·β·φ − Λ·ρ and takes the higher, allowing assert only if total risk stays ≤ ε(1 − ℓ/L).
-- *MIP:* uses the same scoring, but posture is part of each zone's option list and is chosen jointly with the moves, so it can trade assertion between zones to fit the budget.
+- *MIP:* uses the same scoring, but posture is part of each zone's option list and is chosen jointly with the moves, so it can trade assertion between zones to fit the budget. Greedy and the MIP both account for enemy posture in the same way; they differ only in search.
 - *Template plans (Nash, Safety-first):* use the template's single posture in every occupied zone (patrol everywhere if ℓ > 3), then flip the riskiest assertions to patrol until risk fits the budget.
 
 **★ Q18. Is MIP-BR an equilibrium?**
