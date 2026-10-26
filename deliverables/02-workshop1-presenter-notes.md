@@ -273,6 +273,17 @@ No. They are four stylized weather scenarios, not calendar seasons. In reality, 
 
 ### C. Decision rules and solution concepts
 
+**★ Q17d. Explain the six policies simply.**
+One line: random is the baseline, rule-based is a sensible human, greedy and the MIP best response optimize move by move, and the equilibrium and maximin plans follow a game-theory plan for the whole campaign.
+- *Random moves:* the baseline floor.
+- *Rule of thumb (rule-based, moderate commander):* goes where value is high and the enemy is thin; asserts only where it thinks it outnumbers the enemy and ℓ ≤ 2; then pulls back until expected incidents fit ε = 0.15(1 − ℓ/L).
+- *Quick best response (greedy):* a fast shortcut with no solver, using the same MIP objective and budget.
+- *Best response (MIP):* solves the risk-budget best response exactly each period; a larger ε makes it bolder.
+- *Nash equilibrium plan:* follows its part of the higher-total-payoff pure equilibrium of the 14-template game, steering ships toward that fleet split and posture.
+- *Safety-first plan (maximin):* every 3 periods, draws a template from its maximin mixed strategy, which gives a guaranteed worst case and is unpredictable.
+
+Both template plans patrol when ℓ > 3 and drop any assertion that breaks their risk budget.
+
 **★ Q18. Is MIP-BR an equilibrium?**
 No. It is a one-period best response to beliefs about where the enemy is. Equilibrium analysis is done on the 14 × 14 template game, and the "Nash equilibrium plan" plays that equilibrium in the full game.
 
