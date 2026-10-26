@@ -293,6 +293,14 @@ The key contrast: greedy and the MIP plan one move ahead and re-decide every per
 - *Nash equilibrium plan:* uses a fixed template, the higher-total-payoff pure equilibrium of the template game. Free ships are split by region per the template, then across zones in proportion to value, and the nearest reachable ship is matched to each slot. Ships step one hop toward their slots, nearest first, up to F. Occupied zones take the template's posture (patrol if ℓ > 3), and the riskiest assertions flip to patrol until risk fits ε(1 − ℓ/L).
 - *Safety-first plan (maximin):* the same, but every 3 periods it draws a new template from its maximin mixed strategy.
 
+**Q17f. How does each policy decide between patrol and assert?**
+Asserting multiplies a side's strength by 1.5, which means more control, but it raises the incident hazard. Every policy except random computes risk assuming the opponent keeps its last-seen posture (patrol if never seen).
+- *Random:* a coin flip, with no budget.
+- *Rule of thumb:* asserts only if its own strength exceeds the believed enemy strength and ℓ ≤ 2, then flips the riskiest assertions back to patrol until risk ≤ ε(1 − ℓ/L).
+- *Greedy:* in each zone, scores patrol and assert with V·β·φ − Λ·ρ and takes the higher, allowing assert only if total risk stays ≤ ε(1 − ℓ/L).
+- *MIP:* uses the same scoring, but posture is part of each zone's option list and is chosen jointly with the moves, so it can trade assertion between zones to fit the budget.
+- *Template plans (Nash, Safety-first):* use the template's single posture in every occupied zone (patrol everywhere if ℓ > 3), then flip the riskiest assertions to patrol until risk fits the budget.
+
 **★ Q18. Is MIP-BR an equilibrium?**
 No. It is a one-period best response to beliefs about where the enemy is. Equilibrium analysis is done on the 14 × 14 template game, and the "Nash equilibrium plan" plays that equilibrium in the full game.
 
