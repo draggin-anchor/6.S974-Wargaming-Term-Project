@@ -336,7 +336,7 @@ const plan = [
 ];
 plan.forEach((p, i) => {
   const x = 0.6 + i * 3.05;
-  n++; s.addShape(pres.shapes.OVAL, { objectName: "tp" + n, x: x + 0.2, y: 1.85, w: 0.5, h: 0.5, fill: { color: C.accent1 } });
+  n++; s.addShape(pres.shapes.RECTANGLE, { objectName: "tp" + n, x, y: 1.85, w: 2.8, h: 0.08, fill: { color: C.accent1 }, line: { color: C.accent1 } });
   T(s, p[0], { x, y: 1.35, w: 2.8, h: 0.4, fontSize: 16, bold: true, color: C.accent1 });
   T(s, p[1], { x, y: 2.55, w: 2.8, h: 0.45, fontSize: 18, bold: true, color: C.text2 });
   T(s, p[2], { x, y: 3.05, w: 2.8, h: 2.8, fontSize: 15, valign: "top" });
