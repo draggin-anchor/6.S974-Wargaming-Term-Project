@@ -1,0 +1,4 @@
+\input{preamble}
+\begin{document}\color{ink}$\displaystyle
+\begin{aligned}\max_{y,\,b}\quad&\sum_{v\in\C}\sum_{(n,p)}a_v(n,p)\,b_{v,(n,p)}-\gamma\sum_{j}\sum_{w\ne\mathrm{loc}(j)}y_{j,w}-1000\,\xi&&\cmt{control value $-$ incident cost $-$ fuel}\\[2pt]\text{s.t.}\quad&\sum_w y_{j,w}=1\quad\forall j&&\cmt{one destination per free ship}\\&\sum_{j}\sum_{w\ne\mathrm{loc}(j)}y_{j,w}\le F_i-(\text{forced moves})&&\cmt{movement budget}\\&\sum_{(n,p)}b_{v,(n,p)}=1\quad\forall v&&\cmt{one option per zone}\\&\sum_{(n,p)}n_k\,b_{v,(n,p)}=\bar x_{k,v}+\sum_{j\text{ of type }k}y_{j,v}\quad\forall v,k&&\cmt{option matches the moves}\\&\sum_{v\in\C}\sum_{(n,p)}\rho_v(n,p)\,b_{v,(n,p)}\le\varepsilon_i\,(1-\ell^t/L)+\xi&&\cmt{escalation-risk budget}\\&y,\,b\in\{0,1\},\quad\xi\ge0\end{aligned}
+$\end{document}

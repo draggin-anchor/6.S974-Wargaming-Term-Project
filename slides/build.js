@@ -22,8 +22,8 @@ const C = pres.SchemeColor;
 pres.defineSlideMaster({
   title: "DARK", background: { color: C.text2 },
   objects: [
-    { placeholder: { options: { name: "title", type: "title", x: 0.8, y: 1.9, w: 6.2, h: 2.4, fontSize: 38, bold: true, color: C.background1, align: "left", valign: "bottom" }, text: "" } },
-    { placeholder: { options: { name: "body", type: "body", x: 0.8, y: 4.75, w: 6.2, h: 1.4, fontSize: 18, color: C.accent3, align: "left", valign: "top" }, text: "" } },
+    { placeholder: { options: { name: "title", type: "title", x: 8.75, y: 1.2, w: 4.25, h: 3.1, fontSize: 32, bold: true, color: C.background1, align: "left", valign: "bottom" }, text: "" } },
+    { placeholder: { options: { name: "body", type: "body", x: 8.75, y: 4.75, w: 4.25, h: 1.6, fontSize: 16, color: C.accent3, align: "left", valign: "top" }, text: "" } },
   ],
 });
 pres.defineSlideMaster({
@@ -53,18 +53,27 @@ function takeaway(slide, text, y) {
   slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { objectName: "tk" + n, x: 0.6, y: y || 6.25, w: 12.1, h: 0.65, fill: { color: C.background2 }, line: { color: C.accent1, width: 1 }, rectRadius: 0.08 });
   T(slide, [{ text: "Takeaway  ", options: { bold: true, color: C.accent1 } }, { text }], { x: 0.85, y: (y || 6.25) + 0.05, w: 11.6, h: 0.55, fontSize: 16, valign: "middle" });
 }
+// Equations are typeset with LaTeX (eqs/*.tex, rendered by eqs/render.sh at 600 dpi).
+// k scales the 11 pt LaTeX size; maxW caps the width in inches.
+function eq(slide, name, x, y, k, maxW) {
+  const buf = require("fs").readFileSync(__dirname + "/eqs/" + name + ".png");
+  let w = buf.readUInt32BE(16) / 600 * k, h = buf.readUInt32BE(20) / 600 * k;
+  if (maxW && w > maxW) { h *= maxW / w; w = maxW; }
+  n++; slide.addImage({ path: __dirname + "/eqs/" + name + ".png", x, y, w, h, objectName: "eq" + n });
+  return h;
+}
 function img(slide, file, x, y, w, h) { n++; slide.addImage({ path: FIG + file, x, y, w, h, objectName: "img" + n }); }
 function content(section, title) { const s = pres.addSlide({ masterName: "CONTENT", sectionTitle: section }); s.addText(title, { placeholder: "title" }); return s; }
 
 // ---------------------------------------------------------------- 1 title
 pres.addSection({ title: "Introduction" });
 let s = pres.addSlide({ masterName: "DARK", sectionTitle: "Introduction" });
-// USS Kidd (DDG 100) underway in the Pacific, 2011. U.S. Navy photo 110518-N-OI955-090, public domain.
-n++; s.addImage({ path: __dirname + "/assets/title_ddg.jpg", x: 5.0, y: 0, w: 8.333, h: 7.5, objectName: "img" + n });
-n++; s.addShape(pres.shapes.RECTANGLE, { objectName: "gold" + n, x: 0.8, y: 4.45, w: 1.6, h: 0.07, fill: { color: C.accent3 }, line: { color: C.accent3 } });
-T(s, "U.S. Navy photo", { x: 11.6, y: 7.12, w: 1.5, h: 0.25, fontSize: 9, color: C.background1, align: "right" });
+// USS Chafee (DDG 90) underway in the Pacific during RIMPAC 2010. U.S. Navy photo 100721-N-8539M-924, public domain.
+n++; s.addImage({ path: __dirname + "/assets/title_chafee.jpg", x: 0, y: 0, w: 13.333, h: 7.5, objectName: "img" + n });
+n++; s.addShape(pres.shapes.RECTANGLE, { objectName: "gold" + n, x: 8.75, y: 4.45, w: 1.6, h: 0.07, fill: { color: C.accent3 }, line: { color: C.accent3 } });
+T(s, "USS Chafee (DDG 90). U.S. Navy photo", { x: 9.6, y: 7.12, w: 3.5, h: 0.25, fontSize: 9, color: C.background1, align: "right" });
 s.addText("Gray-Zone Maritime Control in the First Island Chain", { placeholder: "title" });
-s.addText("A networked escalation game  |  Workshop 1\nSean Bowman, Tate Murphy, Matthew Newell", { placeholder: "body" });
+s.addText("A networked escalation game\nWorkshop 1\nSean Bowman, Tate Murphy,\nMatthew Newell", { placeholder: "body" });
 s.addNotes("(~30 s) We study day-to-day U.S.-China competition for control of the waters inside the First Island Chain, below the threshold of war. We built it as a game on a network. Today we cover the model, the prototype, and first results on three research questions.");
 
 // ---------------------------------------------------------------- 1b background
@@ -134,21 +143,41 @@ steps.forEach((t, i) => {
   T(s, t, { x: 1.25, y, w: 5.2, h: 0.5, fontSize: 16, valign: "middle" });
 });
 n++; s.addShape(pres.shapes.ROUNDED_RECTANGLE, { objectName: "eqbox", x: 6.9, y: 1.4, w: 5.8, h: 4.55, fill: { color: C.background2 }, line: { color: C.accent6, width: 1 }, rectRadius: 0.08 });
-T(s, [
-  { text: "Control of zone v", options: { bold: true, color: C.accent1, breakLine: true } },
-  { text: "c ← (1 − λ)·c + λ·φ,  λ = 0.3,   φ = (S_B − S_R) / (S_B + S_R + κ)", options: { breakLine: true } },
-  { text: "Presence builds control slowly. Leaving lets it decay.", options: { fontSize: 13, color: C.accent5, breakLine: true } },
-  { text: " ", options: { fontSize: 8, breakLine: true } },
-  { text: "Incident chance", options: { bold: true, color: C.accent2, breakLine: true } },
-  { text: "h = (h₀ + h_A·[asserts]) · min(S_B, S_R) · (1 + ℓ/2),  ρ = 1 − e^(−h)", options: { breakLine: true } },
-  { text: "Needs both sides present. Grows with assertion and with the escalation level ℓ.", options: { fontSize: 13, color: C.accent5, breakLine: true } },
-  { text: " ", options: { fontSize: 8, breakLine: true } },
-  { text: "Payoff", options: { bold: true, color: C.text2, breakLine: true } },
-  { text: "g = Σ V·c − γ·moves − η·ℓ − ζ_D,   minus W = 200 at war", options: { breakLine: true } },
-  { text: "Value of control minus fuel, tension and Blue's redesign cost ζ_D. War hurts both sides, so the game is not zero-sum.", options: { fontSize: 13, color: C.accent5 } },
-], { x: 7.15, y: 1.55, w: 5.3, h: 4.3, fontSize: 14, valign: "top" });
+const box = [
+  ["Control of zone v", C.accent1, "control", "Presence builds control slowly. Leaving lets it decay."],
+  ["Incident chance", C.accent2, "hazard", "Needs both sides present. Grows with assertion and with the escalation level ℓ."],
+  ["Stage payoff", C.text2, "stage", "Control value minus fuel, tension and Blue's redesign cost. Both pay W = 200 at war."],
+];
+let by = 1.55;
+box.forEach((r) => {
+  T(s, r[0], { x: 7.15, y: by, w: 5.3, h: 0.3, fontSize: 15, bold: true, color: r[1] });
+  by += 0.36;
+  by += eq(s, r[2], 7.2, by, 1.35, 5.25) + 0.08;
+  T(s, r[3], { x: 7.15, y: by, w: 5.3, h: 0.3, fontSize: 12, color: C.accent5 });
+  by += 0.48;
+});
 takeaway(s, "Every rule is explicit, so the same game can be played thousands of times by different strategies.");
 s.addNotes("(~70 s) Walk the timeline top to bottom. This is one two-day turn. The weather is drawn first, then both sides move at the same time without seeing each other's full fleet. The box holds all the dynamics. Control moves 30% of the way toward the local force ratio each turn. Incidents need both sides present, and are likelier when someone asserts and when tensions are already high. Payoff is value of zones held minus fuel, tension, and for Blue the running cost of its redesign, zeta-D. War costs both sides 200, so the game is not zero-sum. If asked, every number is our assumption, listed in Table 1 of the report.");
+
+// ---------------------------------------------------------------- 4b formulation
+s = content("Model", "Formulation: state, moves, escalation and payoffs");
+const frows = [
+  ["State", "Ships by type and node, endurance, control, escalation level, sea state", "state", 1.45],
+  ["Flow conservation", "No ships are added or removed", "flow", 1.45],
+  ["Movement budget", "At most Fᵢ ship moves per period (8 Blue, 10 Red)", "budget", 1.45],
+  ["Local strength", "Hulls weighted by type (CCG 0.6, 0.3 in rough seas), × α = 1.5 when asserting", "strength", 1.45],
+  ["Escalation", "Nᵗ = incidents this period. War when ℓ reaches L = 5", "escalation", 1.3],
+  ["Total payoff", "Discounted stage payoffs (δ = 0.98, T = 60), minus W = 200 for both sides at war", "total", 1.45],
+];
+let fy = 1.4;
+frows.forEach((r, i) => {
+  T(s, [{ text: r[0], options: { bold: true, color: C.accent1, breakLine: true } }, { text: r[1], options: { fontSize: 11, color: C.accent5 } }], { x: 0.6, y: fy, w: 3.3, h: 0.6, fontSize: 15, valign: "top" });
+  const h = eq(s, r[2], 4.2, fy, r[3], 8.5);
+  fy += Math.max(0.66, h + 0.1);
+  if (i < frows.length - 1) { n++; s.addShape(pres.shapes.LINE, { objectName: "fl" + n, x: 0.6, y: fy - 0.07, w: 12.1, h: 0, line: { color: C.accent6, width: 0.5 } }); }
+});
+takeaway(s, "Both sides pay W at war, so the game is general-sum. Both prefer to avoid war.");
+s.addNotes("(~50 s) This is the full formulation behind the timeline. The state is ships by type and node, each ship's endurance, the control index of each zone, the escalation level and the sea state of each region. Ships move along edges of the network, with no ships created or lost, and each side gets a fixed number of moves per period. Local strength weights hulls by type and multiplies by 1.5 when a side asserts. Each incident raises the escalation level by one, and a quiet period lowers it by one with probability mu. If it reaches 5, that is war and the game ends. Each side's payoff is its discounted stage payoffs minus 200 at war, paid by both sides, so the game is general-sum.");
 
 // ---------------------------------------------------------------- 5 decisions
 s = content("Model", "How the players decide");
@@ -167,6 +196,21 @@ cards.forEach((c, i) => {
 });
 takeaway(s, "The proposal's strategy types are now one number, ε, inside an optimization (a MIP).");
 s.addNotes("(~60 s) Two ways to decide. On the left, each turn a player solves a mixed-integer program (MIP) to pick moves, with a cap on expected incidents, epsilon. This answers the feedback that Q1 is a feasible region. In the middle, for equilibrium analysis we shrink each side to 14 templates and solve the 14-by-14 game exactly. On the right are the six policies we compare. All of them see the same random draws.");
+
+// ---------------------------------------------------------------- 5b MIP
+s = content("Model", "The best-response MIP with an escalation-risk budget");
+let my = 1.45;
+my += eq(s, "mip", 0.6, my, 1.3, 8.3) + 0.2;
+T(s, "Value of an option (control gain minus incident cost)", { x: 0.6, y: my, w: 8.3, h: 0.3, fontSize: 13, bold: true, color: C.accent1 });
+eq(s, "option", 0.6, my + 0.35, 1.2, 8.3);
+bullets(s, [
+  [{ text: "Variables. ", options: { bold: true } }, { text: "y = 1 sends free ship j to node w. b = 1 picks option (n, p) for zone v, meaning hull counts n and posture p." }],
+  [{ text: "Why options. ", options: { bold: true } }, { text: "Control φ and incident risk ρ are nonlinear in ship counts, so each option's value and risk are computed in advance. The program stays linear." }],
+  [{ text: "Risk budget. ", options: { bold: true, color: C.accent2 } }, { text: "Expected incidents ≤ ε, shrinking to zero as ℓ nears war. ε = 0.05 / 0.15 / 0.40 is conservative / moderate / aggressive." }],
+  [{ text: "Slack ξ ", options: { bold: true } }, { text: "covers unavoidable risk from forced returns, at a penalty of 1000." }],
+], { x: 9.2, y: 1.45, w: 3.5, h: 4.6, fontSize: 13 });
+takeaway(s, "The risk budget ε defines the feasible region. It is how the proposal's commander types enter the model.");
+s.addNotes("(~50 s) This is the decision rule behind most of our results, solved with Gurobi every period. The binary y sends each free ship to a node. Because control and incident risk are nonlinear in ship counts, we list every option for each zone, a hull count and a posture, and compute its value and risk in advance. That keeps the program linear. The objective is control value minus incident cost minus fuel. The key constraint is the last one. Expected incidents this period must stay under the risk budget epsilon, which shrinks to zero as the escalation level nears war. Conservative, moderate and aggressive commanders are budgets of 0.05, 0.15 and 0.40. The slack xi only covers risk from ships forced home through occupied zones.");
 
 // ---------------------------------------------------------------- 6 chicken
 pres.addSection({ title: "Results" });
@@ -197,7 +241,7 @@ bullets(s, [
   [{ text: "Orange ring ", options: { bold: true, color: "E8A33D" } }, { text: "= incident. Shaded region = rough sea or storm." }],
   [{ text: "Run many games ", options: { bold: true } }, { text: "plays the same setup as many simulated games and reports averages." }],
 ], { x: 8.1, y: 1.45, w: 4.6, h: 4.7, fontSize: 16 });
-s.addNotes("(~60 s, or a 60 s live demo) This is the prototype. Pick a plan for each side, a design and the weather, then Step or Play. Zone color is who controls it. Letters count ships. Thick outlines mean asserting, an orange ring is an incident, shading is bad weather. Bottom left is the escalation ladder. Level 5 is war. 'Run many games' gives averages. The screenshot is turn 12 with a storm over the North. The same file runs batch experiments, and a second script reproduces every number in the report.");
+s.addNotes("(~60 s, or a 60 s live demo) This is the prototype. Pick a plan for each side, a design and the weather, then Step or Play. Zone color is who controls it. Letters count ships. Thick outlines mean asserting, an orange ring is an incident, shading is bad weather. Bottom left is the escalation ladder. Level 5 is war. 'Run many games' gives averages. The screenshot is turn 12 of a typhoon-weather game, Nash equilibrium plan against the MIP best response, with rough seas over the Center. The same file runs batch experiments, and a second script reproduces every number in the report.");
 
 // ---------------------------------------------------------------- 8 RQ1
 s = content("Results", "RQ1: more risk buys control, up to a point");

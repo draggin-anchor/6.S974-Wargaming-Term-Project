@@ -1,6 +1,6 @@
 # Workshop 1 presenter notes and Q&A
 
-**Talk:** Tue 2026-10-27. 10 minutes + 2 minutes of questions. 13 slides.
+**Talk:** Tue 2026-10-27. 10 minutes + 2 minutes of questions. 15 slides.
 **Synced to:** the final paper (report_final_2026-10-26.pdf, checked 7:50 PM ET) and the deck as pushed at 636c3f6. Matt is now editing the deck. This includes all changes Sean accepted today. LCS are removed, §1 and the RQ wording are new, weather is now stylized scenarios, the fuel budget is now a movement budget, the ship index is j, and §3.6, §4.1 and §4.2 are revised.
 
 Part 1 is the game formulation in plain words, so any of the three of you can answer questions on it. Part 2 is the slide-by-slide script with timings. Part 3 is the likely Q&A. Part 4 is the sources for any claim about real U.S. or Chinese behavior.
@@ -92,9 +92,9 @@ There are two unitary players, with no allies as players. Control is a force-rat
 
 ### On the slides but no longer in the 5-page paper
 The paper was cut to 5 pages on 10/26. If asked "where is that in the report?", these are now only on the slides or in these notes.
-- **Theater map and GUI screenshot** (slides 3 and 8). The paper has no figures now.
-- **RQ3 policy-by-weather chart** (slide 11, left).
-- **Correlated equilibrium of the 2 × 2** (slide 7). It puts 0.40 on (patrol, patrol), 0.54 on (Blue asserts, Red patrols), 0.06 on (Blue patrols, Red asserts), and 0 on (assert, assert).
+- **Theater map and GUI screenshot** (slides 3 and 10). The paper has no figures now.
+- **RQ3 policy-by-weather chart** (slide 13, left).
+- **Correlated equilibrium of the 2 × 2** (slide 9). It puts 0.40 on (patrol, patrol), 0.54 on (Blue asserts, Red patrols), 0.06 on (Blue patrols, Red asserts), and 0 on (assert, assert).
 - **Common random numbers** (same seeds and weather for every policy), **maximin's definition**, and the **full β derivation**. See Q30c, the policies bullet above, and Q21.
 
 **Paper section map now.** §4.1 is the small example plus the template game. §4.2 is RQ1 (Table 3, risk-budget game). §4.3 is RQ2 (Table 4, policies). §4.4 is RQ3 (Table 5, designs).
@@ -148,7 +148,7 @@ The paper now keeps only the parameter half of Table 1. Both halves are here. A 
 
 ## Part 2. Slide-by-slide script
 
-The current speaker notes add up to about 11.5 minutes. The timings below come to about 10:15, so trim where you can. The speaker split is only a suggestion.
+The current speaker notes add up to about 11.5 minutes. The timings below come to about 12:35, so trim where you can or move slides 6 and 8 to backup. The speaker split is only a suggestion.
 
 | # | Slide | Time | Suggested speaker |
 |---|---|---|---|
@@ -157,14 +157,16 @@ The current speaker notes add up to about 11.5 minutes. The timings below come t
 | 3 | The problem. Control without war | 0:40 | Sean |
 | 4 | Research questions and changes | 0:50 | Sean |
 | 5 | The game, one period at a time | 1:15 | Sean |
-| 6 | How the players decide | 0:50 | Tate |
-| 7 | Small example. When does it pay to assert? | 1:00 | Tate |
-| 8 | The prototype | 0:45 | Tate |
-| 9 | RQ1 | 0:55 | Matthew |
-| 10 | RQ2 | 0:50 | Matthew |
-| 11 | RQ3 | 1:00 | Matthew |
-| 12 | What the evidence does and does not show | 0:35 | Matthew |
-| 13 | Plan for Workshop 2 | 0:30 | Sean |
+| 6 | Formulation. State, moves, escalation and payoffs | 0:50 | Sean |
+| 7 | How the players decide | 0:50 | Tate |
+| 8 | The best-response MIP | 0:50 | Tate |
+| 9 | Small example. When does it pay to assert? | 1:00 | Tate |
+| 10 | The prototype | 0:45 | Tate |
+| 11 | RQ1 | 0:55 | Matthew |
+| 12 | RQ2 | 0:50 | Matthew |
+| 13 | RQ3 | 1:00 | Matthew |
+| 14 | What the evidence does and does not show | 0:35 | Matthew |
+| 15 | Plan for Workshop 2 | 0:30 | Sean |
 
 **1. Title (0:20).** We study day-to-day U.S.-China competition for control of the waters inside the First Island Chain, below the threshold of war, as a game on a network. Today we cover the model, the prototype, and first results on three questions.
 
@@ -176,21 +178,25 @@ The current speaker notes add up to about 11.5 minutes. The timings below come t
 
 **5. One period (1:15).** Read the timeline top to bottom. It is one two-day turn. The weather is drawn first. Each side sees its own ships and some enemy ships. Low-endurance ships head home. Both choose moves and postures at the same time. Then control, incidents and escalation update, and payoffs are scored. On the right, control moves 30% of the way toward the local force balance each turn, so presence builds control slowly. Incidents need both sides present and get likelier with assertion and with tension already high. Payoff is zones held minus fuel, tension, and Blue's redesign cost. War costs both 200, so it is not zero-sum. If you have 10 seconds spare, give the DDG vs. CCG example from Part 1.
 
-**6. How the players decide (0:50).** On the left, each turn a player solves a MIP with a cap ε on expected incidents. That answers the feedback that Q1 is a feasible region. In the middle, to find equilibria we shrink each side to 14 templates and solve that 14 × 14 game exactly with dominance, Nash equilibrium and the two LPs. On the right are the six policies. All see the same random draws.
+**6. Formulation (0:50).** This is the full formulation behind the timeline. The state is ships by type and node, endurance, control, the escalation level and the sea state. Ships move along the network with no ships created or lost, within a movement budget. Local strength weights hulls by type and multiplies by 1.5 when a side asserts. Each incident raises the escalation level by one, and a quiet period lowers it by one with probability μ. At level 5 the game ends in war. Payoff is the discounted sum of stage payoffs minus 200 at war, paid by both sides, so the game is general-sum.
 
-**7. Small example (1:00).** Fix where ships go, so each side only picks patrol or assert. Asserting against a patroller pays a little. If both assert, both lose more than 11. So the best reply is the opposite of the other side, which makes it an anti-coordination game. It has two pure equilibria and a mixed one with mutual assertion 8% of the time. There are two fixes. First, the best correlated equilibrium never recommends both asserting, and a mediator or hotline can implement it. Second, in the repeated game, a standing threat makes mutual patrol a subgame perfect equilibrium for any discount factor above 0.18. The threat is that if either side pushes, the truce is off for good and both fall back to the mixed equilibrium. Ours is 0.98.
+**7. How the players decide (0:50).** On the left, each turn a player solves a MIP with a cap ε on expected incidents. That answers the feedback that Q1 is a feasible region. In the middle, to find equilibria we shrink each side to 14 templates and solve that 14 × 14 game exactly with dominance, Nash equilibrium and the two LPs. On the right are the six policies. All see the same random draws.
 
-**8. Prototype (0:45, or a live demo of the same length).** Pick a plan for each side, a design and the weather, then Step or Play. Zone color is control. Letters count ships. A thick outline means asserting. An orange ring is an incident. Shading is bad weather. Bottom left is the escalation ladder, and 5 is war. "Run many games" plays the same setup as many simulated games and reports averages. One script reproduces every number in the report.
+**8. The best-response MIP (0:50).** This is the decision rule behind most results, solved with Gurobi every period. y sends each free ship to a node. Control and incident risk are nonlinear in ship counts, so we list every option for each zone (a hull count and a posture) and compute its value and risk in advance, which keeps the program linear. The key constraint is the last one. Expected incidents this period must stay under the risk budget ε, which shrinks to zero as the escalation level nears war. Conservative, moderate and aggressive are 0.05, 0.15 and 0.40. The slack ξ only covers risk from ships forced home through occupied zones.
 
-**9. RQ1 (0:55).** On the left, Blue loosens its budget while Red stays moderate. Control rises fast up to about 0.15, then flattens, while war risk keeps rising, from 7% to 20% as ε goes from 0.02 to 0.15. On the right, both sides choose a budget. Aggressive is the best reply to anything for both, so the only equilibrium is both aggressive, with the highest war rate, 34%. Both would do better at moderate–moderate (war 20%). That is a prisoner's dilemma. Restraint has to come from repetition or coordination, as on slide 7.
+**9. Small example (1:00).** Fix where ships go, so each side only picks patrol or assert. Asserting against a patroller pays a little. If both assert, both lose more than 11. So the best reply is the opposite of the other side, which makes it an anti-coordination game. It has two pure equilibria and a mixed one with mutual assertion 8% of the time. There are two fixes. First, the best correlated equilibrium never recommends both asserting, and a mediator or hotline can implement it. Second, in the repeated game, a standing threat makes mutual patrol a subgame perfect equilibrium for any discount factor above 0.18. The threat is that if either side pushes, the truce is off for good and both fall back to the mixed equilibrium. Ours is 0.98.
 
-**10. RQ2 (0:50).** Each Blue policy plays three Red policies, 200 games each. The bar is Blue's payoff against its worst opponent. The Nash equilibrium plan has the best worst case, −116, and half the war rate of the MIP best response against the same Red (10% vs 20%). Best responses do well against weak opponents but escalate. Safety-first is cautious but gives up control. Differences under about 20 points are ties.
+**10. Prototype (0:45, or a live demo of the same length).** Pick a plan for each side, a design and the weather, then Step or Play. Zone color is control. Letters count ships. A thick outline means asserting. An orange ring is an incident. Shading is bad weather. Bottom left is the escalation ladder, and 5 is war. "Run many games" plays the same setup as many simulated games and reports averages. One script reproduces every number in the report.
 
-**11. RQ3 (1:00).** Robustness means two things here. One is expected payoff over the four weather scenarios. The other is the worst case. The ranking holds. The top two plans stay on top in every scenario. Bad weather slightly helps Blue because rough seas weaken Red's coast-guard hulls and storms pause incidents. Of the redesigns, de-escalation measures (D3) are best on average and in the worst case, and they cut war from 20% to 5%. The caveat is that they have no cost yet and help Red too, so it is a joint gain.
+**11. RQ1 (0:55).** On the left, Blue loosens its budget while Red stays moderate. Control rises fast up to about 0.15, then flattens, while war risk keeps rising, from 7% to 20% as ε goes from 0.02 to 0.15. On the right, both sides choose a budget. Aggressive is the best reply to anything for both, so the only equilibrium is both aggressive, with the highest war rate, 34%. Both would do better at moderate–moderate (war 20%). That is a prisoner's dilemma. Restraint has to come from repetition or coordination, as on slide 9.
 
-**12. Evidence (0:35).** Left is what the runs support. Right is what they do not. Values are assumptions, policies look one turn ahead, the war rate depends heavily on a few parameters, and the de-escalation result is partly built in. A sensitivity analysis is first for Workshop 2.
+**12. RQ2 (0:50).** Each Blue policy plays three Red policies, 200 games each. The bar is Blue's payoff against its worst opponent. The Nash equilibrium plan has the best worst case, −116, and half the war rate of the MIP best response against the same Red (10% vs 20%). Best responses do well against weak opponents but escalate. Safety-first is cautious but gives up control. Differences under about 20 points are ties.
 
-**13. Workshop 2 (0:30).** For the model, we add Bayesian beliefs, a best response that looks more than one period ahead, a sensitivity analysis on the zone values, hazards, war penalty and cool-down rate, and calendar-based weather from real data. We also reformulate the movement budget with oilers in mind. Then come learning agents, a Red attacker that reacts to Blue's posture, and Blue's defenses. Last, we test the redesigns and their combinations under attack and a long typhoon, with a cost for de-escalation measures. Thank you. We are happy to take questions.
+**13. RQ3 (1:00).** Robustness means two things here. One is expected payoff over the four weather scenarios. The other is the worst case. The ranking holds. The top two plans stay on top in every scenario. Bad weather slightly helps Blue because rough seas weaken Red's coast-guard hulls and storms pause incidents. Of the redesigns, de-escalation measures (D3) are best on average and in the worst case, and they cut war from 20% to 5%. The caveat is that they have no cost yet and help Red too, so it is a joint gain.
+
+**14. Evidence (0:35).** Left is what the runs support. Right is what they do not. Values are assumptions, policies look one turn ahead, the war rate depends heavily on a few parameters, and the de-escalation result is partly built in. A sensitivity analysis is first for Workshop 2.
+
+**15. Workshop 2 (0:30).** For the model, we add Bayesian beliefs, a best response that looks more than one period ahead, a sensitivity analysis on the zone values, hazards, war penalty and cool-down rate, and calendar-based weather from real data. We also reformulate the movement budget with oilers in mind. Then come learning agents, a Red attacker that reacts to Blue's posture, and Blue's defenses. Last, we test the redesigns and their combinations under attack and a long typhoon, with a cost for de-escalation measures. Thank you. We are happy to take questions.
 
 ---
 
@@ -201,7 +207,7 @@ Answers are short on purpose, 15 to 30 seconds each. ★ = most likely.
 ### A. Model structure
 
 **★ Q1. Why is this a game and not just an optimization for Blue?**
-Because control is relative and risk is shared. My control depends on the ratio of my ships to yours, and an incident needs both of us in the zone. So my best allocation changes when yours does. The small example on slide 7 shows it. The best reply flips depending on what the other side does.
+Because control is relative and risk is shared. My control depends on the ratio of my ships to yours, and an incident needs both of us in the zone. So my best allocation changes when yours does. The small example on slide 9 shows it. The best reply flips depending on what the other side does.
 
 **★ Q2. What does "control" actually mean?**
 It is a proxy for who can operate freely in a zone and enforce its view of the rules there. It is an index from −1 (Red fully in charge) to +1 (Blue). It moves 30% of the way toward the local force balance each period, so you earn it by staying and lose it by leaving. It is a modeling choice, not a measured quantity.
@@ -344,15 +350,15 @@ Gurobi solves it exactly. We compared it to the greedy heuristic over 1,524 Blue
 If both sides held a template, control would settle at c = φ. Template payoffs are that settled control minus incident cost, in calm seas at ℓ = 1. It is an approximation used to compute equilibria. The simulations then test those plans in the full game.
 
 **Q22a. What is IESDS?**
-Iterated elimination of strictly dominated strategies. Cross out any template that another template beats against every opponent choice. Then repeat, since each removal can make new templates dominated. Every Nash equilibrium lies in what survives. In our template game it cuts 14 × 14 down to 2 × 4. Blue keeps only center-heavy (20/60/20, patrol or assert). Red keeps south-heavy (20/20/60) and center/south (20/40/40), each with patrol or assert. That is why the slide 7 example fixes Blue center-heavy and Red south-heavy and varies only the posture.
+Iterated elimination of strictly dominated strategies. Cross out any template that another template beats against every opponent choice. Then repeat, since each removal can make new templates dominated. Every Nash equilibrium lies in what survives. In our template game it cuts 14 × 14 down to 2 × 4. Blue keeps only center-heavy (20/60/20, patrol or assert). Red keeps south-heavy (20/20/60) and center/south (20/40/40), each with patrol or assert. That is why the slide 9 example fixes Blue center-heavy and Red south-heavy and varies only the posture.
 
-**Q22b. Is slide 7 / §4.1 analytical or simulated?**
+**Q22b. Is slide 9 / §4.1 analytical or simulated?**
 Analytical. The template game's payoffs come from the settled-control formula in calm seas at ℓ = 1, with no randomness. Dominance elimination and the pure equilibria come from enumeration. Maximin and the correlated equilibrium come from LPs. The mixed equilibrium comes from indifference equations, and the restraint threshold from a closed form. Only §4.2 to §4.4 (RQ1 to RQ3) are simulations, with 60 periods and 200 simulated games each. Present §4.1 as an illustration of the structure. Its numbers use fractional hulls, and the whole-ship check gives a single equilibrium (Q23a).
 
 **Q22c. What is the zero-sum check in §4.1?**
 Drop the shared incident cost and the game becomes zero-sum, with Red getting minus Blue's control score. Then assert only adds strength, so it dominates. The maximin LP has a pure saddle point. Both sides concentrate on the Center (20/60/20) and assert, with value −2.26 for Blue. The Center holds the value, since Taiwan Strait is worth 10 to each side. Restore the shared incident cost and mutual assertion becomes costly. Each pure equilibrium then has exactly one side asserting, and Red shifts South. The takeaway is that shared risk produces restraint.
 
-**Q22d. How do you get the mixed and correlated equilibria on slide 7?**
+**Q22d. How do you get the mixed and correlated equilibria on slide 9?**
 *Mixed equilibrium.* Each side randomizes to make the other indifferent. If Red asserts with probability q, Blue's payoff from patrol is −9.61q and from assert 0.28(1 − q) − 11.41q. Setting them equal gives q = 0.28/2.08 ≈ 0.13. The same for Red gives Blue asserting with p = 1.20/2.08 ≈ 0.58. Payoffs are −1.30 for Blue and −6.02 for Red, and both assert about 8% of the time. The restraint thresholds use these. They are 0.18 for Blue and 0.17 for Red.
 *Correlated equilibrium (LP).* A referee draws a cell with probability π and tells each side only its own posture. The LP maximizes total payoff subject to four "obey your recommendation" constraints. For example, for Red told P, −10.45·π(AP) ≥ 1.20·π(PP) − 11.33·π(AP). The solution is π(PP) = 0.40, π(AP) = 0.54, π(PA) = 0.06, π(AA) = 0, with payoffs (−0.45, −5.57). That is better for both sides than the mixed equilibrium.
 
@@ -367,8 +373,8 @@ It guards against Red's worst-case template, which Red rarely plays, so it gives
 
 ### D. Results
 
-**★ Q26. Slide 7 says restraint is an equilibrium, but RQ1 says both go aggressive. Which is it?**
-They are different games. Slide 7 is the repeated game. Patient players can sustain mutual patrol with a standing threat, for any δ above 0.18. The course term for this strategy is grim trigger. The punishment after an assertion is both playing the mixed equilibrium forever, not both asserting forever. RQ1's budget game is a one-shot choice of budget by policies that look one turn ahead. There aggressive is the best reply to every budget, so both end up aggressive, with payoffs (−151, 39) and war 34%. Both would be better off at moderate–moderate, with payoffs (−144, 101) and war 20%. That is a prisoner's dilemma. The gap between the two games is the case for coordination devices and for multi-period policies in Workshop 2.
+**★ Q26. Slide 9 says restraint is an equilibrium, but RQ1 says both go aggressive. Which is it?**
+They are different games. Slide 9 is the repeated game. Patient players can sustain mutual patrol with a standing threat, for any δ above 0.18. The course term for this strategy is grim trigger. The punishment after an assertion is both playing the mixed equilibrium forever, not both asserting forever. RQ1's budget game is a one-shot choice of budget by policies that look one turn ahead. There aggressive is the best reply to every budget, so both end up aggressive, with payoffs (−151, 39) and war 34%. Both would be better off at moderate–moderate, with payoffs (−144, 101) and war 20%. That is a prisoner's dilemma. The gap between the two games is the case for coordination devices and for multi-period policies in Workshop 2.
 
 **Q26a. In Table 3, does "moderate" mean the rule-of-thumb commander?**
 No. In Table 3 the labels conservative, moderate and aggressive mean the MIP best response with risk budget ε = 0.05, 0.15 and 0.40. The rule-of-thumb policy also uses ε = 0.15 and is called the moderate commander in the paper, but it is a different policy and does not appear in Table 3.
@@ -376,7 +382,7 @@ No. In Table 3 the labels conservative, moderate and aggressive mean the MIP bes
 **Q26b. Is all of §4.2 run with the MIP best response?**
 Yes. Both experiments are MIP best response against MIP best response, with no redesign, nominal weather and 200 simulated games each. The frontier fixes Red at ε = 0.15 and runs Blue's ε over 0.02, 0.05, 0.10, 0.15, 0.25 and 0.40. The risk-budget game is a 3 × 3 game built from simulated payoffs, with ε of 0.05, 0.15 or 0.40 for each side.
 
-**Q27. Why is slide 7 an anti-coordination game and not a prisoner's dilemma?**
+**Q27. Why is slide 9 an anti-coordination game and not a prisoner's dilemma?**
 With force splits fixed, asserting against a patroller pays, but asserting against an asserter is worse than backing off. The best reply is the opposite of the other side, which is an anti-coordination structure. In the budget game a looser budget also changes deployment, and it pays against everything.
 
 **★ Q28. A 34% war rate is not realistic.**
@@ -404,7 +410,7 @@ This is our reading, not yet tested separately. The MIP best response looks one 
 Partly, yes, and we say so. It also raises Red's payoff (101 to 144) because fewer wars help both. Workshop 2 prices it. The result is still informative. D3 is a real-world version of the mediator from the correlated-equilibrium example.
 
 **Q32a. Why call D3 "de-escalation measures"?**
-It does two things. Once ℓ ≥ 3, a quiet period lowers ℓ with probability 0.5 instead of 0.25. That is the hotline-like part, like the U.S.-China Defense Telephone Link set up in 2008. And assert hazards are halved. That is the CUES-like part, meaning agreed encounter rules and bridge-to-bridge communication. It is bilateral and helps Red too, so "de-escalation measures" covers both effects. The slide 8 screenshot was taken before the rename, so it may still show "Crisis hotline". It is the same design.
+It does two things. Once ℓ ≥ 3, a quiet period lowers ℓ with probability 0.5 instead of 0.25. That is the hotline-like part, like the U.S.-China Defense Telephone Link set up in 2008. And assert hazards are halved. That is the CUES-like part, meaning agreed encounter rules and bridge-to-bridge communication. It is bilateral and helps Red too, so "de-escalation measures" covers both effects. The slide 10 screenshot was taken before the rename, so it may still show "Crisis hotline". It is the same design.
 
 **Q32b. Is Subic Bay an EDCA site?**
 No. EDCA is the 2014 U.S.-Philippines Enhanced Defense Cooperation Agreement. Its first five sites are Antonio Bautista Air Base, Basa Air Base, Fort Magsaysay, Lumbia Air Base and Benito Ebuen Air Base. Four more were added in April 2023. They are Lal-lo airfield, Naval Base Camilo Osias, Camp Melchor Dela Cruz and Balabac Island (RFA). The U.S. does use Subic's port and airfield, and the Marines preposition equipment there. In 2025 the Navy sought a leased storage facility there (USNI News). D1 is a hypothetical full home port at Subic.
