@@ -1,7 +1,7 @@
 # Workshop 1 presenter notes and Q&A
 
 **Talk:** Tue 2026-10-27. 10 minutes + 2 minutes of questions. 16 slides.
-**Synced to:** the final paper (report_final_2026-10-26.pdf, checked 7:50 PM ET) and the deck as pushed at 636c3f6. Matt is now editing the deck. This includes all changes Sean accepted today. LCS are removed, §1 and the RQ wording are new, weather is now stylized scenarios, the fuel budget is now a movement budget, the ship index is j, and §3.6, §4.1 and §4.2 are revised.
+**Synced to:** the final paper (report_final_2026-10-26.pdf, checked 7:50 PM ET) and the final 16-slide deck (navy and gold, pushed 10/26 at 11:17 PM ET). This includes all changes Sean accepted today. LCS are removed, §1 and the RQ wording are new, weather is now stylized scenarios, the fuel budget is now a movement budget, the ship index is j, and §3.6, §4.1 and §4.2 are revised.
 
 Part 1 is the game formulation in plain words, so any of the three of you can answer questions on it. Part 2 is the slide-by-slide script with timings. Part 3 is the likely Q&A. Part 4 is the sources for any claim about real U.S. or Chinese behavior.
 
