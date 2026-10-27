@@ -1,6 +1,6 @@
 # Workshop 1 presenter notes and Q&A
 
-**Talk:** Tue 2026-10-27. 10 minutes + 2 minutes of questions. 15 slides.
+**Talk:** Tue 2026-10-27. 10 minutes + 2 minutes of questions. 16 slides.
 **Synced to:** the final paper (report_final_2026-10-26.pdf, checked 7:50 PM ET) and the deck as pushed at 636c3f6. Matt is now editing the deck. This includes all changes Sean accepted today. LCS are removed, §1 and the RQ wording are new, weather is now stylized scenarios, the fuel budget is now a movement budget, the ship index is j, and §3.6, §4.1 and §4.2 are revised.
 
 Part 1 is the game formulation in plain words, so any of the three of you can answer questions on it. Part 2 is the slide-by-slide script with timings. Part 3 is the likely Q&A. Part 4 is the sources for any claim about real U.S. or Chinese behavior.
@@ -93,7 +93,7 @@ There are two unitary players, with no allies as players. Control is a force-rat
 ### On the slides but no longer in the 5-page paper
 The paper was cut to 5 pages on 10/26. If asked "where is that in the report?", these are now only on the slides or in these notes.
 - **Theater map and GUI screenshot** (slides 3 and 10). The paper has no figures now.
-- **RQ3 policy-by-weather chart** (slide 13, left).
+- **RQ3 policy-by-weather chart** (slide 14, left).
 - **Correlated equilibrium of the 2 × 2** (slide 9). It puts 0.40 on (patrol, patrol), 0.54 on (Blue asserts, Red patrols), 0.06 on (Blue patrols, Red asserts), and 0 on (assert, assert).
 - **Common random numbers** (same seeds and weather for every policy), **maximin's definition**, and the **full β derivation**. See Q30c, the policies bullet above, and Q21.
 
@@ -148,7 +148,7 @@ The paper now keeps only the parameter half of Table 1. Both halves are here. A 
 
 ## Part 2. Slide-by-slide script
 
-The current speaker notes add up to about 11.5 minutes. The timings below come to about 12:35, so trim where you can or move slides 6 and 8 to backup. The speaker split is only a suggestion.
+The current speaker notes add up to about 11.5 minutes. The timings below come to about 13:35, so trim where you can or move slides 6 and 8 to backup. The speaker split is only a suggestion.
 
 | # | Slide | Time | Suggested speaker |
 |---|---|---|---|
@@ -162,11 +162,12 @@ The current speaker notes add up to about 11.5 minutes. The timings below come t
 | 8 | The best-response MIP | 0:50 | Tate |
 | 9 | Small example. When does it pay to assert? | 1:00 | Tate |
 | 10 | The prototype | 0:45 | Tate |
-| 11 | RQ1 | 0:55 | Matthew |
-| 12 | RQ2 | 0:50 | Matthew |
-| 13 | RQ3 | 1:00 | Matthew |
-| 14 | What the evidence does and does not show | 0:35 | Matthew |
-| 15 | Plan for Workshop 2 | 0:30 | Sean |
+| 11 | Program demo | 1:00 | Tate |
+| 12 | RQ1 | 0:55 | Matthew |
+| 13 | RQ2 | 0:50 | Matthew |
+| 14 | RQ3 | 1:00 | Matthew |
+| 15 | What the evidence does and does not show | 0:35 | Matthew |
+| 16 | Plan for Workshop 2 | 0:30 | Sean |
 
 **1. Title (0:20).** We study day-to-day U.S.-China competition for control of the waters inside the First Island Chain, below the threshold of war, as a game on a network. Today we cover the model, the prototype, and first results on three questions.
 
@@ -188,15 +189,17 @@ The current speaker notes add up to about 11.5 minutes. The timings below come t
 
 **10. Prototype (0:45, or a live demo of the same length).** Pick a plan for each side, a design and the weather, then Step or Play. Zone color is control. Letters count ships. A thick outline means asserting. An orange ring is an incident. Shading is bad weather. Bottom left is the escalation ladder, and 5 is war. "Run many games" plays the same setup as many simulated games and reports averages. One script reproduces every number in the report.
 
-**11. RQ1 (0:55).** On the left, Blue loosens its budget while Red stays moderate. Control rises fast up to about 0.15, then flattens, while war risk keeps rising, from 7% to 20% as ε goes from 0.02 to 0.15. On the right, both sides choose a budget. Aggressive is the best reply to anything for both, so the only equilibrium is both aggressive, with the highest war rate, 34%. Both would do better at moderate–moderate (war 20%). That is a prisoner's dilemma. Restraint has to come from repetition or coordination, as on slide 9.
+**11. Program demo (1:00).** Switch to the GUI. Run one game step by step, point out control colors, an incident and the escalation ladder, then Run many games.
 
-**12. RQ2 (0:50).** Each Blue policy plays three Red policies, 200 games each. The bar is Blue's payoff against its worst opponent. The Nash equilibrium plan has the best worst case, −116, and half the war rate of the MIP best response against the same Red (10% vs 20%). Best responses do well against weak opponents but escalate. Safety-first is cautious but gives up control. Differences under about 20 points are ties.
+**12. RQ1 (0:55).** On the left, Blue loosens its budget while Red stays moderate. Control rises fast up to about 0.15, then flattens, while war risk keeps rising, from 7% to 20% as ε goes from 0.02 to 0.15. On the right, both sides choose a budget. Aggressive is the best reply to anything for both, so the only equilibrium is both aggressive, with the highest war rate, 34%. Both would do better at moderate–moderate (war 20%). That is a prisoner's dilemma. Restraint has to come from repetition or coordination, as on slide 9.
 
-**13. RQ3 (1:00).** Robustness means two things here. One is expected payoff over the four weather scenarios. The other is the worst case. The ranking holds. The top two plans stay on top in every scenario. Bad weather slightly helps Blue because rough seas weaken Red's coast-guard hulls and storms pause incidents. Of the redesigns, de-escalation measures (D3) are best on average and in the worst case, and they cut war from 20% to 5%. The caveat is that they have no cost yet and help Red too, so it is a joint gain.
+**13. RQ2 (0:50).** Each Blue policy plays three Red policies, 200 games each. The bar is Blue's payoff against its worst opponent. The Nash equilibrium plan has the best worst case, −116, and half the war rate of the MIP best response against the same Red (10% vs 20%). Best responses do well against weak opponents but escalate. Safety-first is cautious but gives up control. Differences under about 20 points are ties.
 
-**14. Evidence (0:35).** Left is what the runs support. Right is what they do not. Values are assumptions, policies look one turn ahead, the war rate depends heavily on a few parameters, and the de-escalation result is partly built in. A sensitivity analysis is first for Workshop 2.
+**14. RQ3 (1:00).** Robustness means two things here. One is expected payoff over the four weather scenarios. The other is the worst case. The ranking holds. The top two plans stay on top in every scenario. Bad weather slightly helps Blue because rough seas weaken Red's coast-guard hulls and storms pause incidents. Of the redesigns, de-escalation measures (D3) are best on average and in the worst case, and they cut war from 20% to 5%. The caveat is that they have no cost yet and help Red too, so it is a joint gain.
 
-**15. Workshop 2 (0:30).** For the model, we add Bayesian beliefs, a best response that looks more than one period ahead, a sensitivity analysis on the zone values, hazards, war penalty and cool-down rate, and calendar-based weather from real data. We also reformulate the movement budget with oilers in mind. Then come learning agents, a Red attacker that reacts to Blue's posture, and Blue's defenses. Last, we test the redesigns and their combinations under attack and a long typhoon, with a cost for de-escalation measures. Thank you. We are happy to take questions.
+**15. Evidence (0:35).** Left is what the runs support. Right is what they do not. Values are assumptions, policies look one turn ahead, the war rate depends heavily on a few parameters, and the de-escalation result is partly built in. A sensitivity analysis is first for Workshop 2.
+
+**16. Workshop 2 (0:30).** For the model, we add Bayesian beliefs, a best response that looks more than one period ahead, a sensitivity analysis on the zone values, hazards, war penalty and cool-down rate, and calendar-based weather from real data. We also reformulate the movement budget with oilers in mind. Then come learning agents, a Red attacker that reacts to Blue's posture, and Blue's defenses. Last, we test the redesigns and their combinations under attack and a long typhoon, with a cost for de-escalation measures. Thank you. We are happy to take questions.
 
 ---
 

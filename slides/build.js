@@ -243,6 +243,10 @@ bullets(s, [
 ], { x: 8.1, y: 1.45, w: 4.6, h: 4.7, fontSize: 16 });
 s.addNotes("(~60 s, or a 60 s live demo) This is the prototype. Pick a plan for each side, a design and the weather, then Step or Play. Zone color is who controls it. Letters count ships. Thick outlines mean asserting, an orange ring is an incident, shading is bad weather. Bottom left is the escalation ladder. Level 5 is war. 'Run many games' gives averages. The screenshot is turn 12 of a typhoon-weather game, Nash equilibrium plan against the MIP best response, with rough seas over the Center. The same file runs batch experiments, and a second script reproduces every number in the report.");
 
+// ---------------------------------------------------------------- 7b demo
+s = content("Results", "Program demo");
+s.addNotes("Live demo of the prototype. Switch to the GUI window.");
+
 // ---------------------------------------------------------------- 8 RQ1
 s = content("Results", "RQ1: more risk buys control, up to a point");
 img(s, "frontier.png", 0.6, 1.35, 6.0, 4.17);
