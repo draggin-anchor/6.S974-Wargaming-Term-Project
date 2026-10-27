@@ -148,7 +148,7 @@ The paper now keeps only the parameter half of Table 1. Both halves are here. A 
 
 ## Part 2. Slide-by-slide script
 
-The current speaker notes add up to about 11.5 minutes. The timings below come to about 13:35, so trim where you can or move slides 6 and 8 to backup. The speaker split is only a suggestion.
+The timings below total 12:45, and the team plans to run it faster live. The speaker split is only a suggestion.
 
 | # | Slide | Time | Suggested speaker |
 |---|---|---|---|
@@ -187,7 +187,7 @@ The current speaker notes add up to about 11.5 minutes. The timings below come t
 
 **9. Small example (1:00).** Fix where ships go, so each side only picks patrol or assert. Asserting against a patroller pays a little. If both assert, both lose more than 11. So the best reply is the opposite of the other side, which makes it an anti-coordination game. It has two pure equilibria and a mixed one with mutual assertion 8% of the time. There are two fixes. First, the best correlated equilibrium never recommends both asserting, and a mediator or hotline can implement it. Second, in the repeated game, a standing threat makes mutual patrol a subgame perfect equilibrium for any discount factor above 0.18. The threat is that if either side pushes, the truce is off for good and both fall back to the mixed equilibrium. Ours is 0.98.
 
-**10. Prototype (0:45, or a live demo of the same length).** Pick a plan for each side, a design and the weather, then Step or Play. Zone color is control. Letters count ships. A thick outline means asserting. An orange ring is an incident. Shading is bad weather. Bottom left is the escalation ladder, and 5 is war. "Run many games" plays the same setup as many simulated games and reports averages. One script reproduces every number in the report.
+**10. Prototype (0:45).** Pick a plan for each side, a design and the weather, then Step or Play. Zone color is control. Letters count ships. A thick outline means asserting. An orange ring is an incident. Shading is bad weather. Bottom left is the escalation ladder, and 5 is war. "Run many games" plays the same setup as many simulated games and reports averages. One script reproduces every number in the report.
 
 **11. Program demo (1:00).** Switch to the GUI. Run one game step by step, point out control colors, an incident and the escalation ladder, then Run many games.
 
