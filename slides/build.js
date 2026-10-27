@@ -3,11 +3,11 @@ const { applyTheme } = require("./theme.js");
 const FIG = process.env.FIG || (__dirname + "/../prototype/results/figures/");
 
 const THEME = {
-  name: "Gray Zone", headFontFace: "Cambria", bodyFontFace: "Calibri",
+  name: "Navy and Gold", headFontFace: "Franklin Gothic Medium", bodyFontFace: "Franklin Gothic Book",
   colors: {
-    dk1: "1B2430", lt1: "FFFFFF", dk2: "0B2545", lt2: "EEF3F8",
-    accent1: "1F4E9C", accent2: "B23A48", accent3: "E8A33D", accent4: "13807A",
-    accent5: "6B7A8F", accent6: "8DA9C4", hlink: "1F4E9C", folHlink: "6B7A8F",
+    dk1: "1A2233", lt1: "FFFFFF", dk2: "0B1F3A", lt2: "F6F1E2",
+    accent1: "1D3E72", accent2: "A97C14", accent3: "D4AF37", accent4: "B8901E",
+    accent5: "5E6B7D", accent6: "A9B8CC", hlink: "1D3E72", folHlink: "5E6B7D",
   },
 };
 const HEX = THEME.colors;
@@ -22,13 +22,16 @@ const C = pres.SchemeColor;
 pres.defineSlideMaster({
   title: "DARK", background: { color: C.text2 },
   objects: [
-    { placeholder: { options: { name: "title", type: "title", x: 0.8, y: 2.3, w: 11.7, h: 1.6, fontSize: 40, bold: true, color: C.background1, valign: "bottom" }, text: "" } },
-    { placeholder: { options: { name: "body", type: "body", x: 0.8, y: 4.05, w: 11.7, h: 1.6, fontSize: 18, color: C.accent6, valign: "top" }, text: "" } },
+    { placeholder: { options: { name: "title", type: "title", x: 0.8, y: 1.9, w: 6.2, h: 2.4, fontSize: 38, bold: true, color: C.background1, align: "left", valign: "bottom" }, text: "" } },
+    { placeholder: { options: { name: "body", type: "body", x: 0.8, y: 4.75, w: 6.2, h: 1.4, fontSize: 18, color: C.accent3, align: "left", valign: "top" }, text: "" } },
   ],
 });
 pres.defineSlideMaster({
   title: "CONTENT", background: { color: C.background1 },
   objects: [
+    { rect: { x: 0, y: 0, w: 13.333, h: 0.14, fill: { color: HEX.dk2 } } },
+    { rect: { x: 0, y: 0.14, w: 13.333, h: 0.04, fill: { color: HEX.accent3 } } },
+    { rect: { x: 6.117, y: 1.17, w: 1.1, h: 0.05, fill: { color: HEX.accent3 } } },
     { placeholder: { options: { name: "title", type: "title", x: 0.6, y: 0.35, w: 12.1, h: 0.8, fontSize: 28, bold: true, color: C.text2, valign: "middle" }, text: "" } },
   ],
   slideNumber: { x: 12.4, y: 7.0, w: 0.6, h: 0.3, fontSize: 10, color: C.accent5 },
@@ -56,6 +59,10 @@ function content(section, title) { const s = pres.addSlide({ masterName: "CONTEN
 // ---------------------------------------------------------------- 1 title
 pres.addSection({ title: "Introduction" });
 let s = pres.addSlide({ masterName: "DARK", sectionTitle: "Introduction" });
+// USS Kidd (DDG 100) underway in the Pacific, 2011. U.S. Navy photo 110518-N-OI955-090, public domain.
+n++; s.addImage({ path: __dirname + "/assets/title_ddg.jpg", x: 5.0, y: 0, w: 8.333, h: 7.5, objectName: "img" + n });
+n++; s.addShape(pres.shapes.RECTANGLE, { objectName: "gold" + n, x: 0.8, y: 4.45, w: 1.6, h: 0.07, fill: { color: C.accent3 }, line: { color: C.accent3 } });
+T(s, "U.S. Navy photo", { x: 11.6, y: 7.12, w: 1.5, h: 0.25, fontSize: 9, color: C.background1, align: "right" });
 s.addText("Gray-Zone Maritime Control in the First Island Chain", { placeholder: "title" });
 s.addText("A networked escalation game  |  Workshop 1\nSean Bowman, Tate Murphy, Matthew Newell", { placeholder: "body" });
 s.addNotes("(~30 s) We study day-to-day U.S.-China competition for control of the waters inside the First Island Chain, below the threshold of war. We built it as a game on a network. Today we cover the model, the prototype, and first results on three research questions.");
@@ -129,15 +136,15 @@ steps.forEach((t, i) => {
 n++; s.addShape(pres.shapes.ROUNDED_RECTANGLE, { objectName: "eqbox", x: 6.9, y: 1.4, w: 5.8, h: 4.55, fill: { color: C.background2 }, line: { color: C.accent6, width: 1 }, rectRadius: 0.08 });
 T(s, [
   { text: "Control of zone v", options: { bold: true, color: C.accent1, breakLine: true } },
-  { text: "c ← (1 − λ)·c + λ·φ,  λ = 0.3,   φ = (S_B − S_R) / (S_B + S_R + κ)", options: { fontFace: "Cambria", breakLine: true } },
+  { text: "c ← (1 − λ)·c + λ·φ,  λ = 0.3,   φ = (S_B − S_R) / (S_B + S_R + κ)", options: { breakLine: true } },
   { text: "Presence builds control slowly. Leaving lets it decay.", options: { fontSize: 13, color: C.accent5, breakLine: true } },
   { text: " ", options: { fontSize: 8, breakLine: true } },
   { text: "Incident chance", options: { bold: true, color: C.accent2, breakLine: true } },
-  { text: "h = (h₀ + h_A·[asserts]) · min(S_B, S_R) · (1 + ℓ/2),  ρ = 1 − e^(−h)", options: { fontFace: "Cambria", breakLine: true } },
+  { text: "h = (h₀ + h_A·[asserts]) · min(S_B, S_R) · (1 + ℓ/2),  ρ = 1 − e^(−h)", options: { breakLine: true } },
   { text: "Needs both sides present. Grows with assertion and with the escalation level ℓ.", options: { fontSize: 13, color: C.accent5, breakLine: true } },
   { text: " ", options: { fontSize: 8, breakLine: true } },
   { text: "Payoff", options: { bold: true, color: C.text2, breakLine: true } },
-  { text: "g = Σ V·c − γ·moves − η·ℓ − ζ_D,   minus W = 200 at war", options: { fontFace: "Cambria", breakLine: true } },
+  { text: "g = Σ V·c − γ·moves − η·ℓ − ζ_D,   minus W = 200 at war", options: { breakLine: true } },
   { text: "Value of control minus fuel, tension and Blue's redesign cost ζ_D. War hurts both sides, so the game is not zero-sum.", options: { fontSize: 13, color: C.accent5 } },
 ], { x: 7.15, y: 1.55, w: 5.3, h: 4.3, fontSize: 14, valign: "top" });
 takeaway(s, "Every rule is explicit, so the same game can be played thousands of times by different strategies.");
@@ -187,7 +194,7 @@ bullets(s, [
   [{ text: "Pick ", options: { bold: true } }, { text: "a plan for each side, a design and the weather on the right. Press New game, then Step or Play. Help explains the map." }],
   [{ text: "Zone color ", options: { bold: true } }, { text: "shows control. Blue = Blue, red = Red." }],
   [{ text: "B / P / C ", options: { bold: true } }, { text: "= destroyers, navy ships, coast guard. Thick outline = asserting." }],
-  [{ text: "Orange ring ", options: { bold: true, color: C.accent3 } }, { text: "= incident. Shaded region = rough sea or storm." }],
+  [{ text: "Orange ring ", options: { bold: true, color: "E8A33D" } }, { text: "= incident. Shaded region = rough sea or storm." }],
   [{ text: "Run many games ", options: { bold: true } }, { text: "plays the same setup as many simulated games and reports averages." }],
 ], { x: 8.1, y: 1.45, w: 4.6, h: 4.7, fontSize: 16 });
 s.addNotes("(~60 s, or a 60 s live demo) This is the prototype. Pick a plan for each side, a design and the weather, then Step or Play. Zone color is who controls it. Letters count ships. Thick outlines mean asserting, an orange ring is an incident, shading is bad weather. Bottom left is the escalation ladder. Level 5 is war. 'Run many games' gives averages. The screenshot is turn 12 with a storm over the North. The same file runs batch experiments, and a second script reproduces every number in the report.");
@@ -203,7 +210,7 @@ s.addTable([
   [{ text: "Mod. 0.15", options: { bold: true } }, cell("18, −36", "15%"), cell("−144, 101", "20%"), cell("−192, 140", "21%")],
   [{ text: "Aggr. 0.40", options: { bold: true } }, cell("74, −80", "14%"), cell("−83, 16", "25%"), cell("−151, 39", "34%", true)],
 ], { objectName: "riskgame", x: 6.9, y: 1.5, w: 5.8, colW: [1.6, 1.4, 1.4, 1.4], rowH: 0.8, fontSize: 13, border: { type: "solid", pt: 0.5, color: HEX.accent6 }, valign: "middle" });
-T(s, "Risk-budget game. Each side picks ε. Payoffs (Blue, Red) and war rate. Red bold = the only equilibrium.", { x: 6.9, y: 4.85, w: 5.8, h: 0.5, fontSize: 12, italic: true, color: C.accent5 });
+T(s, "Risk-budget game. Each side picks ε. Payoffs (Blue, Red) and war rate. Gold bold = the only equilibrium.", { x: 6.9, y: 4.85, w: 5.8, h: 0.5, fontSize: 12, italic: true, color: C.accent5 });
 T(s, "Raising Blue's budget from 0.02 to 0.15 lifts its control a lot. Beyond 0.25 it barely moves.", { x: 0.6, y: 5.55, w: 6.0, h: 0.5, fontSize: 13, color: C.accent5 });
 takeaway(s, "Both choose aggressive (−151, 39), yet both do better at moderate (−144, 101). That is a prisoner's dilemma.");
 s.addNotes("(~60 s) On the left, Blue loosens its risk budget while Red stays moderate. Control rises fast up to about 0.15, then flattens, while war risk keeps rising. On the right, both sides choose a budget. Aggressive is the best reply to anything, for both, so the only equilibrium is aggressive-aggressive, with the highest war rate, 34%. Both would do better at moderate-moderate. Blue gets −144 instead of −151, Red gets 101 instead of 39, and war falls to 20%. That is a prisoner's dilemma. Restraint has to come from repetition or coordination, as in the previous example.");
