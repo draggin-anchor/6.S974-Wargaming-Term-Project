@@ -78,20 +78,27 @@ s.addNotes("(~30 s) We study day-to-day U.S.-China competition for control of th
 
 // ---------------------------------------------------------------- 1b background
 s = content("Introduction", "Background: why we built this wargame");
+T(s, "Strategic context", { x: 0.6, y: 1.4, w: 7.4, h: 0.4, fontSize: 18, bold: true, color: C.text2 });
+bullets(s, [
+  "The South China Sea is a major maritime trade route and a contested strategic region.",
+  "The United States conducts naval operations to uphold navigational rights and challenge excessive maritime claims.",
+  "China seeks to turn its maritime claims into sustained control, with persistent coast guard and militia presence backed by navy ships.",
+  "Much of this competition takes place below the threshold of war.",
+  [{ text: "Recent example. ", options: { bold: true, color: C.accent2 } }, { text: "On October 20, China reported monitoring USS Charleston near Sabina Shoal and accused it of entering without authorization. The U.S. described the activity as routine operations in international waters (Reuters)." }],
+  "The game captures the resulting tradeoff between presence, control and escalation. Players allocate ships and choose whether to patrol or assert. Stronger presence can improve local control, while confrontational encounters can produce incidents that raise tension across the theater. The model simplifies this regional competition into two players, Blue and Red.",
+], { x: 0.6, y: 1.85, w: 7.4, h: 4.25, fontSize: 13.5 });
 const why = [
-  ["The competition", "China presses its claims with persistent coast guard and militia presence backed by navy ships, while avoiding a conventional military response. The U.S. answers with routine presence and freedom-of-navigation patrols. Incidents, not shots, drive escalation."],
-  ["Why it is hard to study", "Each side's best move depends on the other's, and the risk of war is shared. Real encounters cannot be rerun or varied on purpose. A wargame lets us test strategies and force designs without real risk."],
-  ["What models exist", "A structured gray-zone game with probabilistic adjudication (Wasser 2019). Randomized Coast Guard patrols (Shieh 2012). Zero-sum network interdiction (Washburn 1995). Escalation as a shared risk (Schelling 1966)."],
-  ["What we add", "Maritime allocation, evolving control and shared escalation risk in one general-sum game. The rules are computational, so we can compare strategies and designs across thousands of games."],
+  ["Why a wargame", "Each side's best move depends on the other's, and the risk of war is shared. Real encounters cannot be rerun or varied on purpose, so a wargame lets us test strategies and force designs without real risk."],
+  ["What models exist", "Gray-zone games with probabilistic adjudication (Wasser 2019), randomized patrols (Shieh 2012), network interdiction (Washburn 1995), and escalation as a shared risk (Schelling 1966)."],
+  ["What we add", "Maritime allocation, evolving control and shared escalation risk in one general-sum game, with computational rules so we can compare strategies and designs across thousands of games."],
 ];
 why.forEach((w, i) => {
-  const x = 0.6 + i * 3.05;
-  n++; s.addShape(pres.shapes.RECTANGLE, { objectName: "wb" + n, x, y: 1.45, w: 2.8, h: 0.08, fill: { color: i === 3 ? C.accent2 : C.accent1 }, line: { color: i === 3 ? C.accent2 : C.accent1 } });
-  T(s, w[0], { x, y: 1.65, w: 2.8, h: 0.45, fontSize: 18, bold: true, color: C.text2 });
-  T(s, w[1], { x, y: 2.2, w: 2.8, h: 3.7, fontSize: 15, valign: "top" });
+  const y = 1.4 + i * 1.6;
+  n++; s.addShape(pres.shapes.RECTANGLE, { objectName: "wb" + n, x: 8.4, y, w: 0.07, h: 1.42, fill: { color: i === 2 ? C.accent3 : C.accent1 }, line: { color: i === 2 ? C.accent3 : C.accent1 } });
+  T(s, [{ text: w[0], options: { bold: true, fontSize: 15, color: C.text2, breakLine: true } }, { text: w[1], options: { fontSize: 12.5 } }], { x: 8.65, y, w: 4.05, h: 1.45, valign: "top" });
 });
 takeaway(s, "Each existing model captures part of this contest. Our game combines them and runs thousands of times.");
-s.addNotes("(~45 s) Why we built this. China presses its maritime claims below the threshold of war, with coast guard and militia hulls backed by navy ships, and the U.S. answers with presence and freedom-of-navigation patrols. Incidents, not shots, drive escalation (Helmus 2024; Green 2017). That contest is hard to study directly. Each side's best move depends on the other's, the risk of war is shared, and real encounters cannot be rerun. Existing models each capture a piece. Wasser and colleagues built a structured gray-zone game, Shieh and colleagues a randomized patrol model, Washburn network interdiction, and Schelling the idea of escalation as shared risk. We combine allocation, evolving control and shared escalation risk in one general-sum game with computational rules, so we can compare strategies and designs across thousands of games.");
+s.addNotes("(~40 s) Why we built this. The South China Sea is a major trade route and a contested region. The U.S. operates there to uphold navigational rights and challenge excessive claims, while China works to turn its claims into sustained control with coast guard and militia hulls backed by navy ships. Most of this happens below the threshold of war. A recent example: on October 20, China said it tracked USS Charleston near Sabina Shoal and accused it of entering without permission, while the U.S. called it routine operations in international waters. Our game captures the tradeoff between presence, control and escalation, with two players, Blue and Red. Real encounters cannot be rerun, so a wargame lets us test strategies safely. Existing models each capture a piece, and we combine them in one general-sum game.");
 
 // ---------------------------------------------------------------- 2 problem
 s = content("Introduction", "The problem: control without war");
