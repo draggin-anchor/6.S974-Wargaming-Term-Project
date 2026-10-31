@@ -61,19 +61,19 @@ from collections import defaultdict
 # ============================================================================
 
 PARAMS = {
-    # fleets
-    'N_DDG': 10, 'N_PLAN': 8, 'N_CCG': 6,
+    # fleets: see SHIP_TYPES and FLEET below (Workshop 2: realistic fleets by nation)
     # horizon / discounting (one period = 2 days)
     'T': 180, 'delta': 0.98,          # Workshop 2: one year of two-day turns (Workshop 1: T = 60)
-    # endurance D_k (periods at sea before a ship must be back in port)
-    'D_max': {'DDG': 10, 'PLAN': 8, 'CCG': 6},
-    # strength weights w_k, assert multiplier alpha, share smoothing kappa, control update lambda
-    'w': {'DDG': 1.0, 'PLAN': 1.0, 'CCG': 0.6}, 'alpha': 1.5, 'kappa': 1.0, 'lam': 0.3,
-    # movement budgets F_i (edge traversals per period)
-    'F': {'B': 8, 'R': 10},
-    # incident hazard: h = (h0 + hA_B 1[p_B=A] + hA_R 1[p_R=A]) * min(S_B,S_R) * (1 + ell/2)
-    # (calibrated so that war is rare but possible under moderate play: about 5-15% of games)
-    'h0': 0.006, 'hA_B': 0.03, 'hA_PLAN': 0.036, 'hA_CCG': 0.012,
+    # assert multiplier alpha, share smoothing kappa, control update lambda
+    # (endurance D_k and strength weights w_k are per ship type in SHIP_TYPES)
+    'alpha': 1.5, 'kappa': 1.0, 'lam': 0.3,
+    # movement budgets F_i = F_frac_i * (fleet size), rounded (Workshop 1: 8 of 10 Blue, 10 of 14 Red)
+    'F_frac': {'B': 0.8, 'R': 0.7},
+    # incident hazard: h = (h0 + hA_B 1[p_B=A] + hA_R 1[p_R=A]) * min(S_B,S_R) * (1 + ell/2), where a
+    # side's assert hazard blends its navy and coast guard values by the navy share of its strength.
+    # Workshop 1 values: h0 0.006, hA navy 0.03 (B) / 0.036 (R), hA coast guard 0.012 (R).  h_scale
+    # multiplies all hazards; it is recalibrated for the larger Workshop 2 fleets and the one-year game.
+    'h0': 0.006, 'hA_navy': {'B': 0.03, 'R': 0.036}, 'hA_cg': {'B': 0.01, 'R': 0.012}, 'h_scale': 1.0,
     # escalation ladder: L = armed conflict; mu = probability ell drops by one after a quiet period
     'L': 5, 'ell0': 1, 'mu': 0.25,
     # payoffs
@@ -89,7 +89,7 @@ PARAMS = {
     # attacks (implemented for Workshop 2; not used in the Workshop 1 results)
     'jam_start': 20, 'jam_end': 40, 'deception_contacts': 2,
     # weather: storms last storm_len periods; rough seas scale CCG strength and detection
-    'storm_len': 3, 'rough_ccg': 0.5, 'rough_q': 0.7,
+    'storm_len': 3, 'rough_small': 0.5, 'rough_q': 0.7,
     # Workshop 2 readiness.  Maintenance: a ship operates maint_every periods, then spends
     # maint_len periods in its home port (6 months on, 3 months in); maint_init_frac of each
     # side starts in maintenance and the other ships' due dates are staggered at random.
@@ -118,7 +118,49 @@ WEATHER = {
 
 OPP = {'B': 'R', 'R': 'B'}
 SIGMA = {'B': +1, 'R': -1}              # sigma_B = +1, sigma_R = -1
-KINDS = {'B': ['DDG'], 'R': ['PLAN', 'CCG']}
+
+# Ship types k (Workshop 2).  side, nation, strength weight w_k, endurance D_k (two-day periods),
+# class ('navy' or 'cg' = coast guard, used by the assert hazard), small (strength halved in rough seas).
+# Destroyers and cruisers carry the highest weight.  No aircraft carriers yet.
+SHIP_TYPES = {
+    'US-DDG': ('B', 'US', 1.0, 10, 'navy', False),   # US destroyers and cruisers (7th Fleet, Yokosuka)
+    'US-LCS': ('B', 'US', 0.5, 5, 'navy', True),     # littoral combat ships (rotational)
+    'JP-DDG': ('B', 'JP', 1.0, 10, 'navy', False),   # JMSDF destroyers
+    'JP-FF':  ('B', 'JP', 0.7, 8, 'navy', False),    # JMSDF frigates (Mogami) and destroyer escorts (Abukuma)
+    'JCG':    ('B', 'JP', 0.6, 6, 'cg', True),       # Japan Coast Guard large patrol vessels (Ishigaki)
+    'PH-FF':  ('B', 'PH', 0.7, 8, 'navy', False),    # Philippine Navy frigates
+    'PH-PS':  ('B', 'PH', 0.4, 5, 'navy', True),     # Philippine Navy corvettes and offshore patrol vessels
+    'PCG':    ('B', 'PH', 0.6, 6, 'cg', True),       # Philippine Coast Guard cutters
+    'CN-DDG': ('R', 'CN', 1.0, 10, 'navy', False),   # PLAN destroyers (incl. Type 055)
+    'CN-FF':  ('R', 'CN', 0.7, 8, 'navy', False),    # PLAN frigates
+    'CN-FS':  ('R', 'CN', 0.4, 5, 'navy', True),     # PLAN corvettes
+    'CCG':    ('R', 'CN', 0.6, 6, 'cg', True),       # China Coast Guard large cutters
+    'KP-DDG': ('R', 'KP', 1.0, 8, 'navy', False),    # North Korean destroyers (Choe Hyon)
+    'KP-FS':  ('R', 'KP', 0.3, 5, 'navy', True),     # North Korean light frigates and corvettes
+}
+KINDS = {i: [k for k, t in SHIP_TYPES.items() if t[0] == i] for i in 'BR'}
+W_K = {k: t[2] for k, t in SHIP_TYPES.items()}
+D_K = {k: t[3] for k, t in SHIP_TYPES.items()}
+CLASS_K = {k: t[4] for k, t in SHIP_TYPES.items()}
+SMALL_K = {k: t[5] for k, t in SHIP_TYPES.items()}
+NATION_K = {k: t[1] for k, t in SHIP_TYPES.items()}
+
+# Fleets in theater: ships of each type by home port (open-source counts, see the report).
+FLEET = {
+    'US-DDG': {'YOK': 12}, 'US-LCS': {'GUA': 2},
+    'JP-DDG': {'YOK': 13, 'SAS': 13}, 'JP-FF': {'SAS': 16}, 'JCG': {'ISG': 12},
+    'PH-FF': {'PHL': 4}, 'PH-PS': {'PHL': 9}, 'PCG': {'PHL': 6},
+    'CN-DDG': {'QDO': 8, 'NBO': 10, 'SAN': 12}, 'CN-FF': {'QDO': 7, 'NBO': 9, 'SAN': 11},
+    'CN-FS': {'QDO': 6, 'NBO': 9, 'SAN': 10}, 'CCG': {'QDO': 19, 'NBO': 26, 'SAN': 30},
+    'KP-DDG': {'NAM': 3}, 'KP-FS': {'NAM': 11},
+}
+FLEET_SIZE = {i: sum(sum(FLEET[k].values()) for k in KINDS[i]) for i in 'BR'}
+
+# Each nation refuels and does maintenance only at its own ports (design D1 opens Subic and
+# Sasebo to US ships).  The oiler serves every ship of its side.
+NATION_PORTS = {'US': ['YOK', 'GUA'], 'JP': ['YOK', 'SAS', 'ISG'], 'PH': ['PHL'],
+                'CN': ['QDO', 'NBO', 'SAN'], 'KP': ['NAM']}
+D1_EXTRA_PORTS = {'US': ['PHL', 'SAS']}
 POLICY_NAMES = ['random', 'conservative', 'moderate', 'aggressive', 'greedy_br', 'mip_br',
                 'equilibrium', 'maximin']
 DESIGNS = ['D0', 'D1', 'D2', 'D3']
@@ -132,9 +174,13 @@ ATTACKS = ['jamming', 'blockade', 'deception']
 NODES = {
     'YOK': ('Yokosuka', 139.7, 35.3, 'home', 'B'),
     'GUA': ('Guam', 144.8, 13.4, 'home', 'B'),
-    'PHL': ('Subic Bay', 120.3, 14.8, 'home', 'B'),        # design D1 only
+    'SAS': ('Sasebo', 129.7, 33.2, 'home', 'B'),
+    'ISG': ('Ishigaki', 124.2, 24.3, 'home', 'B'),
+    'PHL': ('Subic Bay', 120.3, 14.8, 'home', 'B'),        # Philippine ports (US ships too under D1)
     'NBO': ('Ningbo', 121.9, 29.9, 'home', 'R'),
     'SAN': ('Sanya', 109.5, 18.2, 'home', 'R'),
+    'QDO': ('Qingdao', 120.4, 36.1, 'home', 'R'),
+    'NAM': ('Nampo', 125.4, 38.7, 'home', 'R'),
     'SEN': ('Senkaku/ECS', 123.5, 25.8, 'contested', None),
     'MIY': ('Miyako Strait', 126.5, 25.0, 'contested', None),
     'TWN': ('Taiwan Strait', 119.8, 24.0, 'contested', None),
@@ -147,8 +193,11 @@ NODES = {
 EDGES = [('YOK', 'MIY'), ('MIY', 'SEN'), ('MIY', 'EOT'), ('SEN', 'NBO'), ('SEN', 'TWN'),
          ('NBO', 'TWN'), ('TWN', 'EOT'), ('TWN', 'LUZ'), ('EOT', 'LUZ'), ('EOT', 'GUA'),
          ('GUA', 'LUZ'), ('LUZ', 'SCB'), ('LUZ', 'SAN'), ('SCB', 'STS'), ('SCB', 'PAR'),
-         ('PAR', 'SAN'), ('SAN', 'STS'), ('STS', 'PAR')]
-EDGES_D1 = [('PHL', 'SCB'), ('PHL', 'LUZ'), ('PHL', 'STS')]   # dispersed basing
+         ('PAR', 'SAN'), ('SAN', 'STS'), ('STS', 'PAR'),
+         # Workshop 2 ports
+         ('PHL', 'SCB'), ('PHL', 'LUZ'), ('PHL', 'STS'), ('SAS', 'SEN'), ('SAS', 'MIY'),
+         ('ISG', 'SEN'), ('ISG', 'MIY'), ('ISG', 'EOT'), ('ISG', 'TWN'),
+         ('QDO', 'SEN'), ('QDO', 'NBO'), ('QDO', 'NAM')]
 
 # node values V_v^B / V_v^R
 VALUE = {
@@ -172,8 +221,8 @@ class Graph:
 
     def __init__(self, design='D0'):
         self.design = design
-        self.nodes = [n for n in NODES if n != 'PHL' or design == 'D1']
-        self.edges = list(EDGES) + (list(EDGES_D1) if design == 'D1' else [])
+        self.nodes = list(NODES)
+        self.edges = list(EDGES)
         self.adj = {n: [] for n in self.nodes}
         for a, b in self.edges:
             self.adj[a].append(b)
@@ -185,6 +234,12 @@ class Graph:
             banned = set(self.homes[OPP[i]])
             self.dist[i] = {u: self._bfs(u, banned) for u in self.nodes}
             self.home_dist[i] = {v: min(self.dist[i][v][h] for h in self.homes[i]) for v in self.nodes}
+        # ports each nation may refuel and maintain at, and the distance to the nearest one
+        self.ports = {n: list(ps) + (D1_EXTRA_PORTS.get(n, []) if design == 'D1' else [])
+                      for n, ps in NATION_PORTS.items()}
+        side = {'US': 'B', 'JP': 'B', 'PH': 'B', 'CN': 'R', 'KP': 'R'}
+        self.port_dist = {n: {v: min(self.dist[side[n]][v][h] for h in ps) for v in self.nodes}
+                          for n, ps in self.ports.items()}
 
     def _bfs(self, src, banned):
         d = {src: 0}
@@ -200,44 +255,74 @@ class Graph:
     def is_home(self, i, v):
         return v in self.homes[i]
 
+    def is_port(self, s, v):
+        """Can ship s refuel and do maintenance at node v (one of its nation's ports)?"""
+        return v in self.ports[NATION_K[s.kind]]
+
+    def nearest_port(self, s, v):
+        i = s.owner
+        return min(self.ports[NATION_K[s.kind]], key=lambda h: self.dist[i][v][h])
+
 
 # ============================================================================
 # 3.  CORE DYNAMICS HELPERS (shared by the engine and by the policies)
 # ============================================================================
 
+def weight(P, k, rough=False):
+    """Strength weight w_k, halved for small hulls in rough seas."""
+    return W_K[k] * (P['rough_small'] if (rough and SMALL_K[k]) else 1.0)
+
+
+def raw_strength(P, cnt, i, rough=False):
+    """Un-asserted strength sum_k w_k x_k of player i's types in kind-count dict cnt,
+    and the navy share of it (the rest is coast guard)."""
+    raw = navy = 0.0
+    for k in KINDS[i]:
+        n = cnt.get(k, 0)
+        if n:
+            x = weight(P, k, rough) * n
+            raw += x
+            if CLASS_K[k] == 'navy':
+                navy += x
+    return raw, (navy / raw if raw > 0 else 1.0)
+
+
 def strength_parts(P, cnt, pB, pR, rough=False):
     """Local strengths S_B, S_R at a node from kind counts and postures.
 
-    S_{i,v} = sum_k w_k * alpha^{1[p_iv = A]} * x_{k,v}.
-    In rough seas the small CCG/militia hulls lose effectiveness: w_CCG is
-    multiplied by rough_ccg (0.5).
-    Also returns the PLAN share of Red (un-asserted) strength, used by the hazard.
+    S_{i,v} = alpha^{1[p_iv = A]} * sum_k w_k * x_{k,v}.
+    In rough seas small hulls (coast guard, corvettes, patrol ships, LCS) count half.
+    Also returns each side's navy share of its strength, used by the hazard.
     """
-    w, a = P['w'], P['alpha']
-    w_ccg = w['CCG'] * (P['rough_ccg'] if rough else 1.0)
-    rawB = w['DDG'] * cnt.get('DDG', 0)
-    rawR = w['PLAN'] * cnt.get('PLAN', 0) + w_ccg * cnt.get('CCG', 0)
+    a = P['alpha']
+    rawB, nsB = raw_strength(P, cnt, 'B', rough)
+    rawR, nsR = raw_strength(P, cnt, 'R', rough)
     S_B = rawB * (a if pB == 'A' else 1.0)
     S_R = rawR * (a if pR == 'A' else 1.0)
-    plan_share = (w['PLAN'] * cnt.get('PLAN', 0) / rawR) if rawR > 0 else 0.0
-    return S_B, S_R, plan_share
+    return S_B, S_R, (nsB, nsR)
 
 
-def hazard_rate(P, design, ell, S_B, S_R, pB, pR, plan_share):
-    """Incident hazard h_v = (h0 + hA_B 1[p_B=A] + hA_R,v 1[p_R=A]) * min(S_B,S_R) * (1 + ell/2).
+def assert_hazard(P, i, navy_share):
+    """hA_i,v: player i's assert hazard, its navy and coast guard values blended by navy share."""
+    return P['hA_navy'][i] * navy_share + P['hA_cg'][i] * (1.0 - navy_share)
 
-    hA_R,v = 0.036 * (PLAN share of Red strength) + 0.012 * (CCG share).
+
+def hazard_rate(P, design, ell, S_B, S_R, pB, pR, shares):
+    """Incident hazard h_v = h_scale (h0 + hA_B,v 1[p_B=A] + hA_R,v 1[p_R=A]) * min(S_B,S_R) * (1 + ell/2).
+
+    hA_i,v blends the navy and coast guard assert hazards by i's navy share of strength at v
+    (shares = (navy share Blue, navy share Red)).
     Design D3 (de-escalation measures): assert hazards halved when ell >= 3.
     """
     if S_B <= 0 or S_R <= 0:
         return 0.0
-    hAB = P['hA_B']
-    hAR = P['hA_PLAN'] * plan_share + P['hA_CCG'] * (1.0 - plan_share)
+    hAB = assert_hazard(P, 'B', shares[0])
+    hAR = assert_hazard(P, 'R', shares[1])
     if design == 'D3' and ell >= 3:
         hAB *= 0.5
         hAR *= 0.5
     base = P['h0'] + (hAB if pB == 'A' else 0.0) + (hAR if pR == 'A' else 0.0)
-    return base * min(S_B, S_R) * (1.0 + ell / 2.0)
+    return P['h_scale'] * base * min(S_B, S_R) * (1.0 + ell / 2.0)
 
 
 def node_eval(P, design, ell, me, own_cnt, post_me, opp_cnt, post_opp, sea='calm'):
@@ -250,12 +335,8 @@ def node_eval(P, design, ell, me, own_cnt, post_me, opp_cnt, post_opp, sea='calm
     """
     if sea == 'storm':
         return 0.0, 0.0
-    if me == 'B':
-        cnt = {'DDG': own_cnt.get('DDG', 0), 'PLAN': opp_cnt.get('PLAN', 0), 'CCG': opp_cnt.get('CCG', 0)}
-        pB, pR = post_me, post_opp
-    else:
-        cnt = {'DDG': opp_cnt.get('DDG', 0), 'PLAN': own_cnt.get('PLAN', 0), 'CCG': own_cnt.get('CCG', 0)}
-        pB, pR = post_opp, post_me
+    cnt = {**{k: opp_cnt.get(k, 0) for k in KINDS[OPP[me]]}, **{k: own_cnt.get(k, 0) for k in KINDS[me]}}
+    pB, pR = (post_me, post_opp) if me == 'B' else (post_opp, post_me)
     S_B, S_R, ps = strength_parts(P, cnt, pB, pR, rough=(sea == 'rough'))
     phi = (S_B - S_R) / (S_B + S_R + P['kappa'])
     h = hazard_rate(P, design, ell, S_B, S_R, pB, pR, ps)
@@ -283,6 +364,10 @@ class Ship:
     def __init__(self, sid, owner, kind, loc, d):
         self.id, self.owner, self.kind, self.loc, self.d, self.moved = sid, owner, kind, loc, d, False
         self.due, self.hold, self.cas, self.maint = 10 ** 9, 0, False, False
+
+    @property
+    def nation(self):
+        return NATION_K[self.kind]
 
     @property
     def needs_port(self):
@@ -341,7 +426,7 @@ class Obs:
         self.oiler = game.oilers.get(player)
         # movement budget left for discretionary moves (forced-return moves are charged first)
         n_forced_moves = sum(1 for sid, dest in forced.items() if dest != game.ship_by_id[sid].loc)
-        self.fuel = max(0, game.P['F'][player] - n_forced_moves)
+        self.fuel = max(0, game.F[player] - n_forced_moves)
 
     def legal_dests(self, ship):
         return self.game.legal_dests(ship)
@@ -356,8 +441,7 @@ class Obs:
 
     def opp_raw(self, v):
         """Believed un-asserted opponent strength at v."""
-        w = self.P['w']
-        return sum(w[k] * n for k, n in self.opp_counts(v).items())
+        return sum(W_K[k] * n for k, n in self.opp_counts(v).items())
 
     def sea_at(self, v):
         """Sea state at node v ('calm' for home ports)."""
@@ -397,13 +481,11 @@ class Game:
         self.policy_names = {'B': blue, 'R': red}
         # --- ships: everybody starts in port with full endurance
         self.ships = []
-        blue_split = {'YOK': 4, 'GUA': 3, 'PHL': 3} if design == 'D1' else {'YOK': 5, 'GUA': 5}
-        for port, n in blue_split.items():
-            for _ in range(n):
-                self._add_ship('B', 'DDG', port)
-        for kind, n_total in (('PLAN', self.P['N_PLAN']), ('CCG', self.P['N_CCG'])):
-            for j in range(n_total):
-                self._add_ship('R', kind, 'NBO' if j % 2 == 0 else 'SAN')
+        for kind, by_port in FLEET.items():
+            for port, n in by_port.items():
+                for _ in range(n):
+                    self._add_ship(SHIP_TYPES[kind][0], kind, port)
+        self.F = {i: int(round(self.P['F_frac'][i] * FLEET_SIZE[i])) for i in 'BR'}
         self.ship_by_id = {s.id: s for s in self.ships}
         # --- readiness: a share of each side starts in maintenance, the rest have staggered due dates
         # (own random stream, so the same seed gives the same maintenance schedule for every policy pair)
@@ -452,12 +534,12 @@ class Game:
 
     # ------------------------------------------------------------------ setup
     def _add_ship(self, owner, kind, loc):
-        self.ships.append(Ship(len(self.ships), owner, kind, loc, self.P['D_max'][kind]))
+        self.ships.append(Ship(len(self.ships), owner, kind, loc, D_K[kind]))
 
     # ------------------------------------------------------------- utilities
     def counts(self):
         """x_{k,v}: kind counts per node."""
-        cnt = {v: {'DDG': 0, 'PLAN': 0, 'CCG': 0} for v in self.g.nodes}
+        cnt = {v: dict.fromkeys(SHIP_TYPES, 0) for v in self.g.nodes}
         for s in self.ships:
             cnt[s.loc][s.kind] += 1
         return cnt
@@ -470,9 +552,10 @@ class Game:
         tot = sum(VALUE['B'].values())
         return sum(VALUE['B'][v] * self.c[v] for v in self.g.contested) / tot
 
-    def refuel_dist(self, i, v):
-        """Distance from v to player i's nearest refuel point: a home port or the oiler on station."""
-        d = self.g.home_dist[i][v]
+    def refuel_dist(self, s, v):
+        """Distance from v to ship s's nearest refuel point: one of its nation's ports or its side's oiler on station."""
+        i = s.owner
+        d = self.g.port_dist[s.nation][v]
         o = self.oilers.get(i)
         if o is not None and o.on_station:
             d = min(d, self.g.dist[i][v][o.loc])
@@ -497,8 +580,8 @@ class Game:
                 continue
             if i == 'B' and (w in self.blocked or (s.loc in self.blocked and not returning)):
                 continue
-            toward_home = self.refuel_dist(i, w) < self.refuel_dist(i, s.loc)
-            if not toward_home and (s.d - 1) < self.refuel_dist(i, w):
+            toward_home = self.refuel_dist(s, w) < self.refuel_dist(s, s.loc)
+            if not toward_home and (s.d - 1) < self.refuel_dist(s, w):
                 continue
             out.append(w)
         return out
@@ -508,26 +591,27 @@ class Game:
         g, i = self.g, s.owner
         if s.needs_port:
             return False
-        return s.d - g.dist[i][s.loc][v] >= self.refuel_dist(i, v)
+        return s.d - g.dist[i][s.loc][v] >= self.refuel_dist(s, v)
 
     def _forced_move(self, s):
         """Forced return: a ship with d <= distance-to-home must head home.
         A ship that has just arrived in port must spend one period refitting.
         Returns the forced destination or None if the ship is free."""
         g, i = self.g, s.owner
-        if g.is_home(i, s.loc):
+        if g.is_port(s, s.loc):
             if s.hold > 0 or s.needs_port:
                 return s.loc                                # in maintenance or repair
-            return s.loc if s.d < self.P['D_max'][s.kind] else None
-        if s.needs_port:                                    # maintenance due or casualty: head to port
-            hops = [w for w in self.legal_dests(s, returning=True) if w != s.loc and g.home_dist[i][w] < g.home_dist[i][s.loc]]
+            return s.loc if s.d < D_K[s.kind] else None
+        pd = g.port_dist[s.nation]
+        if s.needs_port:                                    # maintenance due or casualty: head to own port
+            hops = [w for w in self.legal_dests(s, returning=True) if w != s.loc and pd[w] < pd[s.loc]]
             return self.rng.choice(hops) if hops else s.loc
         o = self.oilers.get(i)
-        if o is not None and o.loc == s.loc and s.d < self.P['D_max'][s.kind]:
+        if o is not None and o.loc == s.loc and s.d < D_K[s.kind]:
             return s.loc                                    # refueling alongside the oiler
-        rd = self.refuel_dist(i, s.loc)
+        rd = self.refuel_dist(s, s.loc)
         if s.d <= rd:
-            hops = [w for w in self.legal_dests(s, returning=True) if w != s.loc and self.refuel_dist(i, w) < rd]
+            hops = [w for w in self.legal_dests(s, returning=True) if w != s.loc and self.refuel_dist(s, w) < rd]
             return self.rng.choice(hops) if hops else s.loc
         return None
 
@@ -596,14 +680,14 @@ class Game:
         """Maintenance clock, engineering casualties, and repairs (after moves)."""
         P, g = self.P, self.g
         for s in self.ships:
-            home = g.is_home(s.owner, s.loc)
+            home = g.is_port(s, s.loc)
             if s.hold > 0:
                 s.hold -= 1
                 if s.hold == 0:
                     if s.maint:
                         s.maint, s.due = False, P['maint_every']
                     s.cas = False
-                    s.d = P['D_max'][s.kind]
+                    s.d = D_K[s.kind]
                 continue
             if home and s.needs_port:
                 if s.due <= 0:
@@ -715,7 +799,7 @@ class Game:
             moves[i], post[i] = m, p
         # ---- 3. resolve moves under the movement budget F_i (forced moves charged first)
         for i in 'BR':
-            budget = P['F'][i]
+            budget = self.F[i]
             plan = {}
             for sid, dest in forced[i].items():
                 if dest != self.ship_by_id[sid].loc and budget > 0:
@@ -738,11 +822,11 @@ class Game:
         # endurance: -1 per period at sea; reset to D_k after a full period in port or alongside the oiler
         for s in self.ships:
             o = self.oilers.get(s.owner)
-            if g.is_home(s.owner, s.loc):
+            if g.is_port(s, s.loc):
                 if not s.moved:
-                    s.d = P['D_max'][s.kind]
+                    s.d = D_K[s.kind]
             elif o is not None and o.loc == s.loc and not s.moved:
-                s.d = P['D_max'][s.kind]
+                s.d = D_K[s.kind]
             else:
                 s.d = max(0, s.d - 1)
             s.moved = False
@@ -918,7 +1002,7 @@ class HeuristicPolicy(Policy):
 
     def act(self, obs):
         g, me, P, ell = obs.graph, obs.player, obs.P, obs.ell
-        w, lam, H = P['w'], P['lam'], horizon_factor(P)
+        w, lam, H = W_K, P['lam'], horizon_factor(P)
         V = VALUE[me]
         opp_cnt = {v: obs.opp_counts(v) for v in g.contested}
         opp_raw = {v: obs.opp_raw(v) for v in g.contested}
@@ -931,32 +1015,41 @@ class HeuristicPolicy(Policy):
             if s.id in obs.forced and obs.forced[s.id] in own:
                 own[obs.forced[s.id]][s.kind] += 1
         assign, score_of = {}, {}
-        pool = list(obs.free)
 
-        def marginal(s, v):
+        def marginal(kind, loc, v):
             base = node_eval(P, obs.design, ell, me, own[v], 'P', opp_cnt[v], 'P', obs.sea_at(v))[0]
-            own[v][s.kind] += 1
+            own[v][kind] += 1
             new = node_eval(P, obs.design, ell, me, own[v], 'P', opp_cnt[v], 'P', obs.sea_at(v))[0]
-            own[v][s.kind] -= 1
-            dist = g.dist[me][s.loc][v]
+            own[v][kind] -= 1
+            dist = g.dist[me][loc][v]
             gain = V[v] * lam * H * (new - base) * (P['delta'] ** dist) - P['gamma'] * dist
             return gain / (1.0 + (1.0 - self.theta) * opp_raw[v])
 
-        while pool:
+        # ships of one type at one node that can reach the same targets score the same, so
+        # score groups, and after each assignment rescore only the node that changed
+        groups = {}
+        for s in obs.free:
+            key = (s.kind, s.loc, tuple(v for v in targets if obs.reach_ok(s, v)))
+            groups.setdefault(key, []).append(s)
+        score = {(key, v): marginal(key[0], key[1], v) for key in groups for v in key[2]}
+        while True:
             best, best_sc = None, 0.05
-            for s in pool:
-                for v in targets:
-                    if not obs.reach_ok(s, v):
-                        continue
-                    sc = marginal(s, v)
+            for key, members in groups.items():
+                if not members:
+                    continue
+                for v in key[2]:
+                    sc = score[key, v]
                     if sc > best_sc:
-                        best, best_sc = (s, v), sc
+                        best, best_sc = (key, v), sc
             if best is None:
                 break
-            s, v = best
+            key, v = best
+            s = groups[key].pop(0)
             assign[s.id], score_of[s.id] = v, best_sc
             own[v][s.kind] += 1
-            pool.remove(s)
+            for key2 in groups:
+                if v in key2[2]:
+                    score[key2, v] = marginal(key2[0], key2[1], v)
         # ---- moves: step toward the assigned node; unassigned ships at sea head home
         pos = {}
         moves_pri = []                                    # (priority, ship id, dest)
@@ -964,7 +1057,7 @@ class HeuristicPolicy(Policy):
             tgt = assign.get(s.id)
             if tgt is None:
                 if not g.is_home(me, s.loc) and (s.loc in REGION_OF and (self.theta <= 0.2 or opp_raw[s.loc] > 0)):
-                    tgt = min(g.homes[me], key=lambda h: g.dist[me][s.loc][h])
+                    tgt = g.nearest_port(s, s.loc)
                     pri = -1.0
                 else:
                     pos[s.id] = s.loc
@@ -1018,7 +1111,7 @@ class HeuristicPolicy(Policy):
                 if not here or len(moves) >= obs.fuel:
                     break
                 s = here[-1]
-                home = min(g.homes[me], key=lambda h: g.dist[me][v][h])
+                home = g.nearest_port(s, v)
                 hop = self.next_hop(obs, s, home)
                 if hop is None:
                     break
@@ -1063,8 +1156,7 @@ class GreedyBRPolicy(Policy):
             own[v][s.kind] += 1
             pos[s.id] = v
         post = {v: 'P' for v in g.contested}
-        cands = {s.id: [w for w in obs.legal_dests(s) if w == s.loc or g.is_home(me, w) or obs.reach_ok(s, w)]
-                 for s in obs.free}
+        cands = {s.id: candidate_dests(obs, s) for s in obs.free}
         term, risk = {}, {}
 
         def evaluate(v):
@@ -1154,7 +1246,7 @@ def candidate_dests(obs, s):
     """Destinations the best response considers for free ship s: stay, go home,
     or a neighbor from which the ship can still operate and return."""
     g, me = obs.graph, obs.player
-    return [w for w in obs.legal_dests(s) if w == s.loc or g.is_home(me, w) or obs.reach_ok(s, w)]
+    return [w for w in obs.legal_dests(s) if w == s.loc or g.is_port(s, w) or obs.reach_ok(s, w)]
 
 
 def plan_value(obs, moves, post):
@@ -1174,8 +1266,12 @@ def plan_value(obs, moves, post):
     return J, risk
 
 
-class MIPBRPolicy(Policy):
-    """Exact per-period best response: the mixed-integer program of Section 3 of
+class MIPBREnumPolicy(Policy):
+    """Workshop 1 best-response MIP (count-vector options), kept to check the Workshop 2
+    flow version (MIPBRPolicy) on the Workshop 1 fleet.  It cannot be built for the
+    Workshop 2 fleets: the option list per zone is 2 * prod_k (A_k,v + 1).
+
+    Exact per-period best response: the mixed-integer program of Section 3 of
     the report, solved with gurobipy.
 
     Given the believed opponent counts x_hat (and last-seen postures) and the
@@ -1198,7 +1294,7 @@ class MIPBRPolicy(Policy):
     aggressive = eps in {0.05, 0.15, 0.40}.  If forced returns alone break the
     budget, a penalized slack keeps the problem feasible.
     """
-    name = 'mip_br'
+    name = 'mip_br_enum'
     _env = None
 
     @classmethod
@@ -1268,6 +1364,143 @@ class MIPBRPolicy(Policy):
         return moves, post
 
 
+STRENGTH_UNIT = 0.05      # every weight w_k, also halved in rough seas, is a multiple of this
+
+
+def eval_strength(P, design, ell, me, R_own, theta_own, post_me, opp_cnt, post_opp, sea='calm'):
+    """node_eval with the own side given by its un-asserted strength R_own and navy share theta_own."""
+    if sea == 'storm':
+        return 0.0, 0.0
+    R_opp, th_opp = raw_strength(P, opp_cnt, OPP[me], rough=(sea == 'rough'))
+    a = P['alpha']
+    S_me = R_own * (a if post_me == 'A' else 1.0)
+    S_op = R_opp * (a if post_opp == 'A' else 1.0)
+    if me == 'B':
+        S_B, S_R, pB, pR, shares = S_me, S_op, post_me, post_opp, (theta_own, th_opp)
+    else:
+        S_B, S_R, pB, pR, shares = S_op, S_me, post_opp, post_me, (th_opp, theta_own)
+    phi = (S_B - S_R) / (S_B + S_R + P['kappa'])
+    h = hazard_rate(P, design, ell, S_B, S_R, pB, pR, shares)
+    return SIGMA[me] * phi, 1.0 - math.exp(-h)
+
+
+class MIPBRPolicy(MIPBREnumPolicy):
+    """Workshop 2 best-response MIP (report section 3.8): the same decision problem as the
+    Workshop 1 program, written with ship flows and strength levels so it scales to
+    many ship types.
+
+        max  sum_v sum_(m,p) a_v(m,p) b_{v,(m,p)} - gamma sum_{g, w != u(g)} f_{g,w} - 1000 xi
+        s.t. sum_w f_{g,w} = |g|                               (groups g of interchangeable free ships)
+             sum_{g, w != u(g)} f_{g,w} <= F_i - forced moves   (movement budget)
+             sum_(m,p) b_{v,(m,p)} = 1
+             sum_(m,p) m b_{v,(m,p)} = sum_k u_k (xbar_{k,v} + sum_{g of type k} f_{g,v})
+             sum_v sum_(m,p) rho_v(m,p) b_{v,(m,p)} <= eps_i (1 - ell/L) + xi
+             f integer, b binary
+
+    u_k = w_k / STRENGTH_UNIT (integer), so m is the own strength level R_v = 0.05 m and the
+    option values are exact for control.  The assert hazard uses theta_hat, the navy share
+    of the player's ships already at or fixed to arrive at v (else of its whole available
+    fleet): the only approximation.
+    """
+    name = 'mip_br'
+
+    def act(self, obs):
+        import gurobipy as gp
+        g, me, P, ell = obs.graph, obs.player, obs.P, obs.ell
+        lam, H, Lam, gamma = P['lam'], horizon_factor(P), P['Lambda'], P['gamma']
+        eps = risk_budget(P['eps'][me], ell, P)
+        fixed = {v: defaultdict(int) for v in g.nodes}
+        for s in obs.ships:
+            if s.id in obs.forced:
+                fixed[obs.forced[s.id]][s.kind] += 1
+        groups = defaultdict(list)
+        for s in obs.free:
+            groups[(s.kind, s.loc, tuple(candidate_dests(obs, s)))].append(s)
+        m = gp.Model(env=self.env())
+        f = {}
+        for key, members in groups.items():
+            k, u, cands = key
+            for w in cands:
+                f[key, w] = m.addVar(vtype='I', lb=0, ub=len(members))
+            m.addConstr(gp.quicksum(f[key, w] for w in cands) == len(members))
+        moves_expr = gp.quicksum(var for (key, w), var in f.items() if w != key[1])
+        m.addConstr(moves_expr <= obs.fuel)
+        obj = -gamma * moves_expr
+        risk_terms = []
+        # fleet-wide navy share, used where the player has no ships at or fixed to v
+        avail = defaultdict(int)
+        for s in obs.ships:
+            if s.hold == 0:
+                avail[s.kind] += 1
+        theta_fleet = raw_strength(P, avail, me)[1]
+        self.options = {}
+        for v in g.contested:
+            sea = obs.sea_at(v)
+            rough = sea == 'rough'
+            unit = {k: int(round(weight(P, k, rough) / STRENGTH_UNIT)) for k in KINDS[me]}
+            m0 = sum(unit[k] * n for k, n in fixed[v].items())
+            arr = [(key, unit[key[0]]) for key in groups if v in key[2]]
+            m_max = m0 + sum(u_k * len(groups[key]) for key, u_k in arr)
+            here = defaultdict(int, fixed[v])
+            for s in obs.free:
+                if s.loc == v:
+                    here[s.kind] += 1
+            raw_here, th_here = raw_strength(P, here, me, rough)
+            theta = th_here if raw_here > 0 else theta_fleet
+            opp_cnt, opp_post = obs.opp_counts(v), obs.opp_posture(v)
+
+            def option(lvl, p):
+                phi, rho = eval_strength(P, obs.design, ell, me, lvl * STRENGTH_UNIT, theta, p, opp_cnt, opp_post, sea)
+                return VALUE[me][v] * lam * H * phi - Lam * rho, rho
+            a0, r0 = option(0, 'P')
+            if m_max == 0:
+                obj += a0
+                continue
+            # one option per strength level and posture, written as piecewise-linear functions of the
+            # level (exact: the level is always a whole number of units).  The level is split into a
+            # patrol part and an assert part, and the binary z_v allows only one of them to be nonzero.
+            lvl = {p: m.addVar(lb=0, ub=m_max) for p in 'PA'}
+            z = m.addVar(vtype='B')
+            m.addConstr(lvl['P'] + lvl['A'] == m0 + gp.quicksum(u_k * f[key, v] for key, u_k in arr))
+            m.addConstr(lvl['A'] <= m_max * z)
+            m.addConstr(lvl['P'] <= m_max * (1 - z))
+            step = P.get('mip_step', 1)
+            xs = sorted(set(range(0, min(m_max, P.get('mip_dense', m_max)) + 1)) | set(range(0, m_max + 1, step)) | {m_max})
+            for p in 'PA':
+                vals = [option(x, p) for x in xs]
+                av, rv = m.addVar(lb=-gp.GRB.INFINITY), m.addVar(lb=0.0)
+                m.addGenConstrPWL(lvl[p], av, xs, [a for a, _ in vals])
+                m.addGenConstrPWL(lvl[p], rv, xs, [r for _, r in vals])
+                obj += av
+                risk_terms.append(rv)
+            obj -= a0                                     # option(0) is counted in both parts
+            self.options[v] = (lvl, z)
+        slack = m.addVar(lb=0.0)
+        m.addConstr(gp.quicksum(risk_terms) <= eps + slack)
+        m.setObjective(obj - 1000.0 * slack, gp.GRB.MAXIMIZE)
+        if 'mip_gap' in P:
+            m.Params.MIPGap = P['mip_gap']
+        if 'mip_time' in P:
+            m.Params.TimeLimit = P['mip_time']
+        m.optimize()
+        moves = {}
+        for key, members in groups.items():
+            k, u, cands = key
+            todo = [(w, int(round(f[key, w].X))) for w in cands if w != u]
+            # ships with the most endurance take the moves (all members may legally take any of them)
+            pool = sorted(members, key=lambda s: -s.d)
+            for w, n in todo:
+                for _ in range(n):
+                    moves[pool.pop(0).id] = w
+        post = {}
+        for v, (lvl, z) in self.options.items():
+            if lvl['P'].X + lvl['A'].X > 0.5:
+                post[v] = 'A' if z.X > 0.5 else 'P'
+        self.last_obj = m.ObjVal
+        return moves, post
+
+
+
 # ============================================================================
 # 7.  TEMPLATE GAME (strategic form)
 # ============================================================================
@@ -1314,9 +1547,8 @@ class MetaGame:
 
     def _payoff(self, tB, tR):
         P = self.P
-        alloc = {'DDG': self._spread(DEPLOYABLE_FRAC * P['N_DDG'], tB[0]),
-                 'PLAN': self._spread(DEPLOYABLE_FRAC * P['N_PLAN'], tR[0]),
-                 'CCG': self._spread(DEPLOYABLE_FRAC * P['N_CCG'], tR[0])}
+        alloc = {k: self._spread(DEPLOYABLE_FRAC * sum(FLEET[k].values()), tB[0] if SHIP_TYPES[k][0] == 'B' else tR[0])
+                 for k in SHIP_TYPES}
         ctrlB = ctrlR = inc = 0.0
         for ri, (r, nodes) in enumerate(REGIONS.items()):
             for v in nodes:
@@ -1481,15 +1713,14 @@ class TemplatePolicy(Policy):
         assign = {}
         pairs = sorted(((g.dist[me][s.loc][v], self.rng.random(), s.id, v) for s in free for v in slots
                         if obs.reach_ok(s, v)), key=lambda x: (x[0], x[1]))
-        used_slot = [False] * len(slots)
+        open_slots = defaultdict(int)
+        for v in slots:
+            open_slots[v] += 1
         for d, _, sid, v in pairs:
-            if sid in assign:
+            if sid in assign or open_slots[v] == 0:
                 continue
-            for j, sv in enumerate(slots):
-                if sv == v and not used_slot[j]:
-                    used_slot[j] = True
-                    assign[sid] = v
-                    break
+            open_slots[v] -= 1
+            assign[sid] = v
         moves = {}
         order = sorted(assign.items(), key=lambda kv: g.dist[me][obs.game.ship_by_id[kv[0]].loc][kv[1]])
         for sid, v in order:
@@ -1562,6 +1793,8 @@ def make_policy(name, player, game):
         return GreedyBRPolicy(player, rng)
     if name == 'mip_br':
         return MIPBRPolicy(player, rng)
+    if name == 'mip_br_enum':
+        return MIPBREnumPolicy(player, rng)
     if name == 'equilibrium':
         return EquilibriumPolicy(player, rng)
     if name == 'maximin':
@@ -1612,13 +1845,14 @@ def launch_gui():
     LAYOUT = {
         'YOK': ('n', 0, 18, 'n', 0, 31), 'GUA': ('e', -18, -8, 'e', -18, 8),
         'NBO': ('s', 0, -22, 'n', 0, 18), 'SAN': ('s', 0, -16, 'e', -16, 0),
-        'PHL': ('w', 18, 10, 'w', 18, 22),
+        'PHL': ('w', 18, 10, 'w', 18, 22), 'SAS': ('w', 18, -6, 'w', 18, 8),
+        'ISG': ('n', 0, 18, 'n', 0, 31), 'QDO': ('e', -18, -6, 'e', -18, 8), 'NAM': ('w', 18, -6, 'w', 18, 8),
         'SEN': ('s', 0, -20, 'e', -18, 2), 'MIY': ('w', 18, -8, 'w', 18, 7),
         'TWN': ('e', -18, -6, 'e', -18, 8), 'EOT': ('w', 18, 4, 'w', 18, 18),
         'LUZ': ('e', -18, 4, 'n', 0, 18), 'SCB': ('w', 18, -6, 'e', -18, 8),
         'PAR': ('n', 0, 18, 'w', 18, 6), 'STS': ('s', 0, -20, 'w', 18, 4),
     }
-    LON0, LON1, LAT0, LAT1 = 108.0, 146.0, 8.0, 36.0
+    LON0, LON1, LAT0, LAT1 = 108.0, 146.0, 8.0, 40.0
     BLUE, RED, CCG_COL = '#1f4e9c', '#b22222', '#d2691e'
     # plain-language names shown in the dropdowns -> internal names used by the model
     POLICY_LABELS = {
@@ -1959,28 +2193,41 @@ def launch_gui():
                 cv.create_text(x + ldx, y + ldy, text=f"{v} {name}", anchor=la, font=('TkDefaultFont', 8, 'bold'))
                 # ship markers: true own side(s); believed opponent counts (~n, age in brackets) in the side views
                 segs = []
+
+                def by_class(cnt, i):
+                    navy = sum(cnt.get(k, 0) for k in KINDS[i] if CLASS_K[k] == 'navy')
+                    cg = sum(cnt.get(k, 0) for k in KINDS[i] if CLASS_K[k] == 'cg')
+                    return navy, cg
                 if view in ('truth', 'B'):
-                    if counts[v]['DDG']:
-                        segs.append((f"B{counts[v]['DDG']}", BLUE))
+                    navy, cg = by_class(counts[v], 'B')
+                    if navy:
+                        segs.append((f"B{navy}", BLUE))
+                    if cg:
+                        segs.append((f"G{cg}", BLUE))
                 elif not g.is_home('R', v):
                     b = gm.belief['R'][v]
-                    if b.get('DDG', 0):
-                        segs.append((f"B~{b['DDG']}[{b['age']}]", BLUE))
+                    navy, cg = by_class(b, 'B')
+                    if navy:
+                        segs.append((f"B~{navy}[{b['age']}]", BLUE))
+                    if cg:
+                        segs.append((f"G~{cg}[{b['age']}]", BLUE))
                 if view in ('truth', 'R'):
-                    if counts[v]['PLAN']:
-                        segs.append((f"P{counts[v]['PLAN']}", RED))
-                    if counts[v]['CCG']:
-                        segs.append((f"C{counts[v]['CCG']}", CCG_COL))
+                    navy, cg = by_class(counts[v], 'R')
+                    if navy:
+                        segs.append((f"P{navy}", RED))
+                    if cg:
+                        segs.append((f"C{cg}", CCG_COL))
                 elif not g.is_home('B', v):
                     b = gm.belief['B'][v]
-                    if b.get('PLAN', 0):
-                        segs.append((f"P~{b['PLAN']}[{b['age']}]", RED))
-                    if b.get('CCG', 0):
-                        segs.append((f"C~{b['CCG']}[{b['age']}]", CCG_COL))
+                    navy, cg = by_class(b, 'R')
+                    if navy:
+                        segs.append((f"P~{navy}[{b['age']}]", RED))
+                    if cg:
+                        segs.append((f"C~{cg}[{b['age']}]", CCG_COL))
                 self._draw_segments(cv, x + sdx, y + sdy, sa, segs)
             # legend / overlays
             cv.create_text(8, MAP_H - 6, anchor='sw', font=('TkDefaultFont', 8), fill='#334',
-                           text="Circle color/number = control (-1 Red ... +1 Blue).  B = Blue destroyers, P = Red navy, C = Red coast guard.\n"
+                           text="Circle color/number = control (-1 Red ... +1 Blue).  B = Blue navy, G = Blue coast guard, P = Red navy, C = Red coast guard.\n"
                                 "Thick outline = side is asserting.  Orange ring = incident.  Grey box = storm, light box = rough sea.  Squares = home ports.")
             if gm.jam_region:
                 cv.create_text(8, 8, anchor='nw', fill='#b00', font=('TkDefaultFont', 9, 'bold'),

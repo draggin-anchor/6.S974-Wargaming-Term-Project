@@ -12,6 +12,7 @@ experiments.py -- every number, table and figure in the Workshop 1 report.
     python3 experiments.py weather      # RQ3: robustness to weather scenarios
     python3 experiments.py designs      # RQ3: resilient designs under weather
     python3 experiments.py seedcheck    # Workshop 2: how many games each comparison needs
+    python3 experiments.py mipcheck     # Workshop 2: flow MIP vs Workshop 1 MIP on the Workshop 1 fleet
 
 Results are written to results/ (CSV + markdown) and figures to results/figures/.
 Every configuration is run on the same seeds 0..SEEDS-1, and Nature's weather
@@ -25,6 +26,7 @@ import math
 import os
 import sys
 import time
+from collections import defaultdict
 from multiprocessing import Pool
 
 import wargame_gui as wg
@@ -413,6 +415,101 @@ def seedcheck():
              "Games needed to resolve a difference Delta: n = (2 s_d / Delta)^2.\n\n"
              + md(rows, ['Comparison', 'mean difference', 'paired s.e.', 'unpaired s.e.', 'difference / paired s.e.',
                          'n for Delta = 10', 'n for Delta = 20']))
+
+
+# ---------------------------------------------------------------------------
+# Workshop 2: check the flow MIP (report section 3.8) against the Workshop 1 MIP
+# ---------------------------------------------------------------------------
+def use_workshop1_fleet():
+    """Switch the model to the Workshop 1 fleet (10 DDG; 8 PLAN, 6 CCG), the largest
+    case where the Workshop 1 count-vector MIP can still be built."""
+    wg.SHIP_TYPES = {'US-DDG': ('B', 'US', 1.0, 10, 'navy', False),
+                     'CN-DDG': ('R', 'CN', 1.0, 8, 'navy', False),
+                     'CCG': ('R', 'CN', 0.6, 6, 'cg', True)}
+    wg.FLEET = {'US-DDG': {'YOK': 5, 'GUA': 5}, 'CN-DDG': {'NBO': 4, 'SAN': 4}, 'CCG': {'NBO': 3, 'SAN': 3}}
+    T = wg.SHIP_TYPES
+    wg.KINDS = {i: [k for k, t in T.items() if t[0] == i] for i in 'BR'}
+    wg.W_K = {k: t[2] for k, t in T.items()}
+    wg.D_K = {k: t[3] for k, t in T.items()}
+    wg.CLASS_K = {k: t[4] for k, t in T.items()}
+    wg.SMALL_K = {k: t[5] for k, t in T.items()}
+    wg.NATION_K = {k: t[1] for k, t in T.items()}
+    wg.FLEET_SIZE = {i: sum(sum(wg.FLEET[k].values()) for k in wg.KINDS[i]) for i in 'BR'}
+
+
+class _BothMIPs(wg.MIPBRPolicy):
+    """Plays the flow MIP, and on every decision also solves the Workshop 1 MIP on the same
+    observation and records both plans' exact objective (plan_value) and incident risk."""
+    log = []
+
+    def act(self, obs):
+        old = wg.MIPBREnumPolicy(self.player, self.rng)
+        mo, po = old.act(obs)
+        mn, pn = super().act(obs)
+        Jo, ro = wg.plan_value(obs, mo, po)
+        Jn, rn = wg.plan_value(obs, mn, pn)
+        cnt = lambda mv: wg.Policy.planned_counts(obs, {s.id: mv.get(s.id, s.loc) for s in obs.free})
+        co, cn = cnt(mo), cnt(mn)
+        same = all({k: c for k, c in co[v].items() if c} == {k: c for k, c in cn[v].items() if c}
+                   and (po.get(v, 'P') == pn.get(v, 'P') or not any(co[v].values()))
+                   for v in obs.graph.contested)
+        eps = wg.risk_budget(obs.P['eps'][self.player], obs.ell, obs.P)
+        _BothMIPs.log.append((self.player, same, Jo, Jn, ro, rn, eps))
+        return mn, pn
+
+
+def _mipcheck_games(seed):
+    use_workshop1_fleet()
+    _BothMIPs.log = []
+    orig = wg.make_policy
+    wg.make_policy = lambda name, player, game: _BothMIPs(player, game.rng) if name == 'both' else orig(name, player, game)
+    wg.Game('both', 'both', seed=seed, weather='nominal').run()
+    wg.make_policy = orig
+    return list(_BothMIPs.log)
+
+
+def _mipcheck_batch(args):
+    pol, seed0, n = args
+    use_workshop1_fleet()
+    s, rows = wg.run_batch(pol, pol, seeds=n, seed0=seed0, weather='nominal')
+    return pol, rows
+
+
+def mipcheck(n_games=40, n_batch=SEEDS):
+    with Pool(min(4, os.cpu_count() or 1)) as pool:
+        logs = [x for L in pool.map(_mipcheck_games, range(n_games)) for x in L]
+        chunks = [(p, k, n_batch // 4) for p in ('mip_br_enum', 'mip_br') for k in range(0, n_batch, n_batch // 4)]
+        batch = defaultdict(list)
+        for pol, rows in pool.map(_mipcheck_batch, chunks):
+            batch[pol] += rows
+    rows = []
+    for side in 'BR':
+        L = [x for x in logs if x[0] == side]
+        n = len(L)
+        same = sum(x[1] for x in L)
+        gap = [x[2] - x[3] for x in L]
+        rows.append([{'B': 'Blue', 'R': 'Red'}[side], n, f"{100 * same / n:.1f}%",
+                     f"{sum(abs(d) for d in gap) / n:.3f}", f"{max(gap):.3f}", f"{min(gap):.3f}",
+                     sum(1 for x in L if x[5] > x[6] + 1e-6), sum(1 for x in L if x[4] > x[6] + 1e-6)])
+    txt = (f"Flow MIP vs Workshop 1 MIP on the Workshop 1 fleet, nominal weather, {n_games} games played by the "
+           "flow MIP on both sides; at every decision both programs are solved on the same observation.\n"
+           "Objective = exact per-period objective of each plan (plan_value). gap = old - new (positive: old plan better).\n\n"
+           + md(rows, ['Side', 'decisions', 'same plan', 'mean |gap|', 'max gap', 'min gap',
+                       'new over risk budget', 'old over risk budget']))
+    import statistics as st
+    brow = []
+    for pol in ('mip_br_enum', 'mip_br'):
+        R = batch[pol]
+        n = len(R)
+        ub = [r['blue_payoff'] for r in R]
+        ur = [r['red_payoff'] for r in R]
+        war = [r['war'] for r in R]
+        brow.append([pol, n, f"{st.fmean(ub):.1f} ± {st.stdev(ub) / math.sqrt(n):.1f}",
+                     f"{st.fmean(ur):.1f} ± {st.stdev(ur) / math.sqrt(n):.1f}",
+                     f"{st.fmean(war):.3f}", f"{st.fmean(r['control_share'] for r in R):+.3f}"])
+    txt += ("\n\nWhole games, both sides the same MIP, same seeds:\n\n"
+            + md(brow, ['MIP', 'games', 'u_B', 'u_R', 'war rate', 'control share']))
+    write_md('mipcheck', txt)
 
 
 ALL = ['chicken', 'template', 'gap', 'frontier', 'riskgame', 'policies', 'weather', 'designs']
