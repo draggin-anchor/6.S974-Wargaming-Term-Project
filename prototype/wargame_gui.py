@@ -64,7 +64,7 @@ PARAMS = {
     # fleets
     'N_DDG': 10, 'N_PLAN': 8, 'N_CCG': 6,
     # horizon / discounting (one period = 2 days)
-    'T': 60, 'delta': 0.98,
+    'T': 180, 'delta': 0.98,          # Workshop 2: one year of two-day turns (Workshop 1: T = 60)
     # endurance D_k (periods at sea before a ship must be back in port)
     'D_max': {'DDG': 10, 'PLAN': 8, 'CCG': 6},
     # strength weights w_k, assert multiplier alpha, share smoothing kappa, control update lambda
@@ -90,9 +90,19 @@ PARAMS = {
     'jam_start': 20, 'jam_end': 40, 'deception_contacts': 2,
     # weather: storms last storm_len periods; rough seas scale CCG strength and detection
     'storm_len': 3, 'rough_ccg': 0.5, 'rough_q': 0.7,
+    # Workshop 2 readiness.  Maintenance: a ship operates maint_every periods, then spends
+    # maint_len periods in its home port (6 months on, 3 months in); maint_init_frac of each
+    # side starts in maintenance and the other ships' due dates are staggered at random.
+    'maint_every': 90, 'maint_len': 45, 'maint_init_frac': 1 / 3,
+    # Engineering casualty: 1% per day at sea, so 1 - 0.99^2 per two-day period; the ship
+    # returns to its nearest home port and is repaired there for cas_len periods (10 days).
+    'p_cas_day': 0.01, 'cas_len': 5,
+    # Oiler: one per side.  It refuels ships in its zone and must return to port to
+    # refuel itself every oiler_endurance periods (30 days).
+    'oiler': True, 'oiler_endurance': 15,
     # template game: whole ships only (largest-remainder rounding) instead of fractional hulls
-    # (Workshop 2; False reproduces the Workshop 1 results)
-    'whole_hulls': False,
+    # (Workshop 2; False reproduces the Workshop 1 template game)
+    'whole_hulls': True,
 }
 
 # Weather scenarios omega in Omega: per region and period, a storm
@@ -263,14 +273,38 @@ def horizon_factor(P):
 
 
 class Ship:
-    """One hull: owner i, type k, location x (node code), endurance d."""
-    __slots__ = ('id', 'owner', 'kind', 'loc', 'd', 'moved')
+    """One hull: owner i, type k, location x (node code), endurance d.
+
+    Workshop 2 readiness state: due = periods of operation left before maintenance,
+    hold = periods left in port (maintenance or repair), cas = has an engineering
+    casualty and is heading home for repair."""
+    __slots__ = ('id', 'owner', 'kind', 'loc', 'd', 'moved', 'due', 'hold', 'cas', 'maint')
 
     def __init__(self, sid, owner, kind, loc, d):
         self.id, self.owner, self.kind, self.loc, self.d, self.moved = sid, owner, kind, loc, d, False
+        self.due, self.hold, self.cas, self.maint = 10 ** 9, 0, False, False
+
+    @property
+    def needs_port(self):
+        """Must go to a home port (maintenance due or engineering casualty), not just refuel."""
+        return self.cas or self.due <= 0
 
     def __repr__(self):
         return f"{self.owner}-{self.kind}#{self.id}@{self.loc}(d={self.d})"
+
+
+class Oiler:
+    """A side's oiler: sits at a zone of the region where its side has the best control,
+    refuels own ships in its zone, and returns to port every oiler_endurance periods."""
+    __slots__ = ('owner', 'loc', 'fuel', 'target')
+
+    def __init__(self, owner, loc, fuel):
+        self.owner, self.loc, self.fuel, self.target = owner, loc, fuel, None
+
+    @property
+    def on_station(self):
+        return self.loc in REGION_OF
+
 
 
 # ============================================================================
@@ -304,6 +338,7 @@ class Obs:
         self.closed = set(game.closed)
         self.sea = dict(game.sea)                       # public sea state per region
         self.blocked = set(game.blocked) if player == 'B' else set()
+        self.oiler = game.oilers.get(player)
         # movement budget left for discretionary moves (forced-return moves are charged first)
         n_forced_moves = sum(1 for sid, dest in forced.items() if dest != game.ship_by_id[sid].loc)
         self.fuel = max(0, game.P['F'][player] - n_forced_moves)
@@ -370,6 +405,22 @@ class Game:
             for j in range(n_total):
                 self._add_ship('R', kind, 'NBO' if j % 2 == 0 else 'SAN')
         self.ship_by_id = {s.id: s for s in self.ships}
+        # --- readiness: a share of each side starts in maintenance, the rest have staggered due dates
+        # (own random stream, so the same seed gives the same maintenance schedule for every policy pair)
+        ready_rng = random.Random(7919 * seed + 3)
+        for i in 'BR':
+            own = [s for s in self.ships if s.owner == i]
+            n_maint = round(self.P['maint_init_frac'] * len(own))
+            for j, s in enumerate(ready_rng.sample(own, len(own))):
+                if j < n_maint:
+                    s.maint, s.hold, s.due = True, ready_rng.randint(1, self.P['maint_len']), 0
+                else:
+                    s.due = ready_rng.randint(1, self.P['maint_every'])
+        self.p_cas = 1.0 - (1.0 - self.P['p_cas_day']) ** 2
+        self.oilers = {}
+        if self.P['oiler']:
+            for i in 'BR':
+                self.oilers[i] = Oiler(i, self.g.homes[i][0], self.P['oiler_endurance'])
         # --- state
         self.c = dict(C0)
         self.ell = self.P['ell0']
@@ -419,6 +470,14 @@ class Game:
         tot = sum(VALUE['B'].values())
         return sum(VALUE['B'][v] * self.c[v] for v in self.g.contested) / tot
 
+    def refuel_dist(self, i, v):
+        """Distance from v to player i's nearest refuel point: a home port or the oiler on station."""
+        d = self.g.home_dist[i][v]
+        o = self.oilers.get(i)
+        if o is not None and o.on_station:
+            d = min(d, self.g.dist[i][v][o.loc])
+        return d
+
     def legal_dests(self, s, returning=False):
         """Nodes ship s may occupy next period (stay is always allowed).
 
@@ -438,8 +497,8 @@ class Game:
                 continue
             if i == 'B' and (w in self.blocked or (s.loc in self.blocked and not returning)):
                 continue
-            toward_home = g.home_dist[i][w] < g.home_dist[i][s.loc]
-            if not toward_home and (s.d - 1) < g.home_dist[i][w]:
+            toward_home = self.refuel_dist(i, w) < self.refuel_dist(i, s.loc)
+            if not toward_home and (s.d - 1) < self.refuel_dist(i, w):
                 continue
             out.append(w)
         return out
@@ -447,7 +506,9 @@ class Game:
     def reach_ok(self, s, v):
         """Can ship s reach v and still spend at least one period there before forced return?"""
         g, i = self.g, s.owner
-        return s.d - g.dist[i][s.loc][v] >= g.home_dist[i][v]
+        if s.needs_port:
+            return False
+        return s.d - g.dist[i][s.loc][v] >= self.refuel_dist(i, v)
 
     def _forced_move(self, s):
         """Forced return: a ship with d <= distance-to-home must head home.
@@ -455,9 +516,18 @@ class Game:
         Returns the forced destination or None if the ship is free."""
         g, i = self.g, s.owner
         if g.is_home(i, s.loc):
+            if s.hold > 0 or s.needs_port:
+                return s.loc                                # in maintenance or repair
             return s.loc if s.d < self.P['D_max'][s.kind] else None
-        if s.d <= g.home_dist[i][s.loc]:
+        if s.needs_port:                                    # maintenance due or casualty: head to port
             hops = [w for w in self.legal_dests(s, returning=True) if w != s.loc and g.home_dist[i][w] < g.home_dist[i][s.loc]]
+            return self.rng.choice(hops) if hops else s.loc
+        o = self.oilers.get(i)
+        if o is not None and o.loc == s.loc and s.d < self.P['D_max'][s.kind]:
+            return s.loc                                    # refueling alongside the oiler
+        rd = self.refuel_dist(i, s.loc)
+        if s.d <= rd:
+            hops = [w for w in self.legal_dests(s, returning=True) if w != s.loc and self.refuel_dist(i, w) < rd]
             return self.rng.choice(hops) if hops else s.loc
         return None
 
@@ -520,6 +590,70 @@ class Game:
                     moves[s.id] = hops[0]
         post['SCB'] = 'A'
         return moves, post
+
+    # ------------------------------------------------------------- readiness
+    def _readiness(self, ev):
+        """Maintenance clock, engineering casualties, and repairs (after moves)."""
+        P, g = self.P, self.g
+        for s in self.ships:
+            home = g.is_home(s.owner, s.loc)
+            if s.hold > 0:
+                s.hold -= 1
+                if s.hold == 0:
+                    if s.maint:
+                        s.maint, s.due = False, P['maint_every']
+                    s.cas = False
+                    s.d = P['D_max'][s.kind]
+                continue
+            if home and s.needs_port:
+                if s.due <= 0:
+                    s.maint, s.hold = True, P['maint_len']
+                    s.cas = False                               # repairs folded into the maintenance period
+                    ev.append(f"{s.owner} {s.kind}#{s.id} enters maintenance at {s.loc}")
+                else:
+                    s.hold = P['cas_len']
+                continue
+            s.due -= 1
+            if not home and not s.cas and self.rng.random() < self.p_cas:
+                s.cas = True
+                ev.append(f"{s.owner} {s.kind}#{s.id} engineering casualty at {s.loc}: returning to port")
+
+    def available(self, i):
+        """Ships of player i not in maintenance or repair."""
+        return sum(1 for s in self.ships if s.owner == i and s.hold == 0)
+
+    def best_region(self, i):
+        """Region where player i has the best value-weighted control."""
+        def score(r):
+            vs = REGIONS[r]
+            return SIGMA[i] * sum(VALUE[i][v] * self.c[v] for v in vs) / sum(VALUE[i][v] for v in vs)
+        return max(REGIONS, key=score)
+
+    def _move_oilers(self, ev):
+        """Oiler rule: one edge per period toward a random zone of the side's best-control region
+        (it wanders among that region's zones and follows if the region changes); it heads home
+        when its own fuel only just covers the trip, and refuels with one period in port."""
+        g = self.g
+        for i, o in self.oilers.items():
+            if g.is_home(i, o.loc):
+                if o.fuel < self.P['oiler_endurance']:
+                    o.fuel = self.P['oiler_endurance']          # one period in port to refuel
+                    continue
+            else:
+                o.fuel -= 1
+            if not g.is_home(i, o.loc) and o.fuel <= g.home_dist[i][o.loc]:
+                dest = min(g.homes[i], key=lambda h: g.dist[i][o.loc][h])
+            else:
+                region = self.best_region(i)
+                if o.target not in REGIONS[region] or o.loc == o.target:
+                    o.target = self.rng.choice(REGIONS[region])
+                dest = o.target
+            if dest == o.loc or o.loc in self.closed:
+                continue
+            hops = [w for w in g.adj[o.loc] if w not in self.closed and w not in g.homes[OPP[i]]
+                    and g.dist[i][w][dest] < g.dist[i][o.loc][dest]]
+            if hops:
+                o.loc = hops[0]
 
     # ------------------------------------------------------------------ step
     def step(self):
@@ -601,14 +735,19 @@ class Game:
                 self.ship_by_id[sid].moved = True
             self.last_moves[i] = len(plan)
             self.fuel_used[i] += len(plan)
-        # endurance: -1 per period at sea; reset to D_k after a full period in port
+        # endurance: -1 per period at sea; reset to D_k after a full period in port or alongside the oiler
         for s in self.ships:
+            o = self.oilers.get(s.owner)
             if g.is_home(s.owner, s.loc):
                 if not s.moved:
                     s.d = P['D_max'][s.kind]
+            elif o is not None and o.loc == s.loc and not s.moved:
+                s.d = P['D_max'][s.kind]
             else:
                 s.d = max(0, s.d - 1)
             s.moved = False
+        self._readiness(ev)
+        self._move_oilers(ev)
         for i in 'BR':
             self.postures[i] = {v: ('A' if post[i].get(v) == 'A' else 'P') for v in g.contested}
         # ---- 4. strength and control update; 5. incidents
@@ -662,7 +801,8 @@ class Game:
         self.hist.append({'t': t, 'ell': self.ell, 'share': self.control_share(), 'gB': gB, 'gR': gR,
                           'incidents': sorted(incidents), 'postures': {i: dict(self.postures[i]) for i in 'BR'},
                           'c': dict(self.c), 'counts': counts, 'uB': self.u['B'], 'uR': self.u['R'],
-                          'sea': dict(self.sea)})
+                          'sea': dict(self.sea), 'oilers': {i: o.loc for i, o in self.oilers.items()},
+                          'avail': {i: self.available(i) for i in 'BR'}})
 
     def run(self):
         while not self.done:
@@ -676,6 +816,8 @@ class Game:
             'control_share': self.share_sum / n, 'war': int(self.war), 'war_t': self.war_t if self.war else '',
             'max_ell': self.max_ell, 'mean_ell': self.ell_sum / n, 'incidents': self.n_incidents,
             'blue_fuel': self.fuel_used['B'], 'red_fuel': self.fuel_used['R'], 'periods': self.t,
+            'blue_avail': statistics.fmean(h['avail']['B'] for h in self.hist) if self.hist else 0,
+            'red_avail': statistics.fmean(h['avail']['R'] for h in self.hist) if self.hist else 0,
         }
 
 
@@ -1134,7 +1276,7 @@ SPLITS = [(.6, .2, .2), (.2, .6, .2), (.2, .2, .6), (.4, .4, .2), (.4, .2, .4), 
 # 14 templates per player: force split across (N, C, S) x posture {P, A}
 TEMPLATES = [(split, post) for split in SPLITS for post in ('P', 'A')]
 TEMPLATE_LABELS = [f"N{int(s[0]*100):02d}C{int(s[1]*100):02d}S{int(s[2]*100):02d}-{p}" for s, p in TEMPLATES]
-DEPLOYABLE_FRAC = 0.7     # fraction of the fleet assumed deployable in the template game
+DEPLOYABLE_FRAC = 2 / 3   # Workshop 2: two thirds of each fleet out of maintenance (Workshop 1: 0.7)
 
 
 class MetaGame:
