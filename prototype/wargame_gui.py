@@ -90,6 +90,9 @@ PARAMS = {
     'jam_start': 20, 'jam_end': 40, 'deception_contacts': 2,
     # weather: storms last storm_len periods; rough seas scale CCG strength and detection
     'storm_len': 3, 'rough_ccg': 0.5, 'rough_q': 0.7,
+    # template game: whole ships only (largest-remainder rounding) instead of fractional hulls
+    # (Workshop 2; False reproduces the Workshop 1 results)
+    'whole_hulls': False,
 }
 
 # Weather scenarios omega in Omega: per region and period, a storm
@@ -1169,19 +1172,41 @@ class MetaGame:
 
     def _payoff(self, tB, tR):
         P = self.P
-        nB = DEPLOYABLE_FRAC * P['N_DDG']
-        nP, nC = DEPLOYABLE_FRAC * P['N_PLAN'], DEPLOYABLE_FRAC * P['N_CCG']
+        alloc = {'DDG': self._spread(DEPLOYABLE_FRAC * P['N_DDG'], tB[0]),
+                 'PLAN': self._spread(DEPLOYABLE_FRAC * P['N_PLAN'], tR[0]),
+                 'CCG': self._spread(DEPLOYABLE_FRAC * P['N_CCG'], tR[0])}
         ctrlB = ctrlR = inc = 0.0
         for ri, (r, nodes) in enumerate(REGIONS.items()):
             for v in nodes:
-                cnt = {'DDG': nB * tB[0][ri] / len(nodes),
-                       'PLAN': nP * tR[0][ri] / len(nodes), 'CCG': nC * tR[0][ri] / len(nodes)}
+                cnt = {k: alloc[k][v] for k in alloc}
                 S_B, S_R, ps = strength_parts(P, cnt, tB[1], tR[1])
                 phi = (S_B - S_R) / (S_B + S_R + P['kappa'])
                 ctrlB += VALUE['B'][v] * phi
                 ctrlR -= VALUE['R'][v] * phi
                 inc += 1.0 - math.exp(-hazard_rate(P, 'D0', P['ell0'], S_B, S_R, tB[1], tR[1], ps))
         return ctrlB - P['Lambda'] * inc, ctrlR - P['Lambda'] * inc, ctrlB
+
+    def _spread(self, n, split):
+        """Ships of one kind per node: n split over regions by the template's fractions,
+        then evenly over each region's nodes.  With whole_hulls, n is rounded to whole
+        ships and each split uses largest-remainder rounding (ties go to the earlier
+        region or node in list order)."""
+        def lr_round(total, shares):
+            raw = [total * f for f in shares]
+            out = [math.floor(x) for x in raw]
+            order = sorted(range(len(raw)), key=lambda i: -(raw[i] - out[i]))
+            for i in order[:total - sum(out)]:
+                out[i] += 1
+            return out
+        nodes_by_region = list(REGIONS.values())
+        if not self.P.get('whole_hulls'):
+            return {v: n * split[ri] / len(nodes) for ri, nodes in enumerate(nodes_by_region) for v in nodes}
+        per_region = lr_round(int(round(n)), split)
+        out = {}
+        for ri, nodes in enumerate(nodes_by_region):
+            for v, c in zip(nodes, lr_round(per_region[ri], [1.0 / len(nodes)] * len(nodes))):
+                out[v] = float(c)
+        return out
 
     # ---------------------------------------------------------- pure analysis
     def best_responses(self, MB=None, MR=None):

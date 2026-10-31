@@ -11,6 +11,7 @@ experiments.py -- every number, table and figure in the Workshop 1 report.
     python3 experiments.py policies     # RQ2: policy comparison
     python3 experiments.py weather      # RQ3: robustness to weather scenarios
     python3 experiments.py designs      # RQ3: resilient designs under weather
+    python3 experiments.py seedcheck    # Workshop 2: how many games each comparison needs
 
 Results are written to results/ (CSV + markdown) and figures to results/figures/.
 Every configuration is run on the same seeds 0..SEEDS-1, and Nature's weather
@@ -363,6 +364,55 @@ def designs():
     write_md('designs', "RQ3 resilient designs: Blue mip_br vs Red mip_br (ε = 0.15 each). Entry: u_B / war rate. "
              f"s.e. of u_B about {max(s['blue_se'] for s in res):.0f}\n\n"
              + md(rows, ['Design'] + list(wg.WEATHER) + ['expected', 'worst case']))
+
+
+# ---------------------------------------------------------------------------
+# Workshop 2: how many simulated games are enough
+# ---------------------------------------------------------------------------
+# Each pair is (label, setup A, setup B) with setup = (blue, red, design, weather).
+# Both setups use the same seeds and weather draws, so the comparison uses the
+# per-game difference d_k = u_B(A, k) - u_B(B, k).  Its standard error is
+# s_d / sqrt(n).  To tell the two apart at about 95% confidence the mean
+# difference must exceed 2 s_d / sqrt(n), so n >= (2 s_d / Delta)^2 games
+# resolve a difference Delta.  The unpaired standard error sqrt(s_A^2 + s_B^2)
+# is shown for comparison.
+SEED_PAIRS = [
+    ('RQ2 equilibrium vs MIP-BR (Red MIP-BR)', ('equilibrium', 'mip_br', 'D0', 'nominal'),
+     ('mip_br', 'mip_br', 'D0', 'nominal')),
+    ('RQ2 greedy vs MIP-BR (Red MIP-BR)', ('greedy_br', 'mip_br', 'D0', 'nominal'),
+     ('mip_br', 'mip_br', 'D0', 'nominal')),
+    ('RQ3 D3 vs D0 (MIP-BR both)', ('mip_br', 'mip_br', 'D3', 'nominal'), ('mip_br', 'mip_br', 'D0', 'nominal')),
+    ('RQ3 D1 vs D0 (MIP-BR both)', ('mip_br', 'mip_br', 'D1', 'nominal'), ('mip_br', 'mip_br', 'D0', 'nominal')),
+    ('RQ3 typhoon vs nominal (MIP-BR both)', ('mip_br', 'mip_br', 'D0', 'typhoon'),
+     ('mip_br', 'mip_br', 'D0', 'nominal')),
+]
+
+
+def _games(setup):
+    blue, red, design, weather = setup
+    _, rows = wg.run_batch(blue, red, design, (), seeds=SEEDS, weather=weather)
+    return setup, [(r['blue_payoff'], r['war']) for r in rows]
+
+
+def seedcheck():
+    import statistics as st
+    setups = sorted({s for _, a, b in SEED_PAIRS for s in (a, b)})
+    with Pool(min(4, os.cpu_count() or 1)) as pool:
+        G = dict(pool.map(_games, setups))
+    rows = []
+    for label, a, b in SEED_PAIRS:
+        ua, ub = [x[0] for x in G[a]], [x[0] for x in G[b]]
+        d = [x - y for x, y in zip(ua, ub)]
+        n, mean_d, s_d = len(d), st.fmean(d), st.stdev(d)
+        se_unpaired = math.sqrt((st.variance(ua) + st.variance(ub)) / n)
+        need = lambda delta: math.ceil((2 * s_d / delta) ** 2)
+        rows.append([label, f"{mean_d:+.1f}", f"{s_d / math.sqrt(n):.1f}", f"{se_unpaired:.1f}",
+                     f"{abs(mean_d) / (s_d / math.sqrt(n)):.1f}", need(10), need(20)])
+    write_md('seedcheck', f"How many games are enough ({SEEDS} paired games per setup, Blue payoff u_B). "
+             "Paired s.e. = s_d / sqrt(n) over per-game differences on common seeds. "
+             "Games needed to resolve a difference Delta: n = (2 s_d / Delta)^2.\n\n"
+             + md(rows, ['Comparison', 'mean difference', 'paired s.e.', 'unpaired s.e.', 'difference / paired s.e.',
+                         'n for Delta = 10', 'n for Delta = 20']))
 
 
 ALL = ['chicken', 'template', 'gap', 'frontier', 'riskgame', 'policies', 'weather', 'designs']
