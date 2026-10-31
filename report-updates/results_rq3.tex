@@ -1,31 +1,33 @@
-% !TEX root = report.tex
-
+% !TEX root = updates.tex
 \noindent\begin{minipage}[t]{0.47\textwidth}\vspace{0pt}\centering\footnotesize\setlength{\tabcolsep}{2pt}
 {\begin{tabular}{l|cccc|cc}
 \toprule
 Design & calm & nom. & typh. & extr. & exp. & worst\\\midrule
-D0 baseline   & $-164$/.24 & $-144$/.20 & $-134$/.12 & $-119$/.10 & $-144$ & $-164$\\
-D1 dispersed  & $-153$/.33 & $-141$/.28 & $-131$/.24 & $\mathbf{-98}$/.14  & $-137$ & $-153$\\
-D2 sensing    & $-181$/.23 & $-164$/.23 & $-149$/.12 & $-136$/.11 & $-162$ & $-181$\\
-D3 de-escalation & $\mathbf{-140}$/.10 & $\mathbf{-118}$/.05 & $\mathbf{-111}$/.02 & $-102$/.01 & $\mathbf{-120}$ & $\mathbf{-140}$\\
+D0 baseline   & $-458$/.34 & $-430$/.26 & $-399$/.21 & $-366$/.16 & $-423$ & $-458$\\
+D1 dispersed  & $-474$/.34 & $-421$/.23 & $-394$/.19 & $-368$/.11 & $-422$ & $-474$\\
+D2 sensing    & $-479$/.34 & $-447$/.28 & $-424$/.28 & $-386$/.12 & $-443$ & $-479$\\
+D3 de-escalation & $\mathbf{-444}$/.10 & $\mathbf{-395}$/.11 & $\mathbf{-382}$/.06 & $\mathbf{-350}$/.04 & $\mathbf{-400}$ & $\mathbf{-444}$\\
 \bottomrule
 \end{tabular}}
-\captionof{table}{Blue designs by weather scenario (MIP-BR vs.\ MIP-BR): $u_\B$ / war rate (s.e.\ $\approx7$).}\label{fig:rq3}
+\captionof{table}{Blue designs by weather scenario (MIP-BR vs.\ MIP-BR): $u_\B$ / war rate (s.e.\ $\approx6$--$9$).}\label{fig:rq3}
 \smallskip\normalsize\raggedright We score each policy or design $x$ by its expected payoff
 $\sum_\omega\pi_\omega J(x,\omega)$ and worst case $\min_\omega J(x,\omega)$.
 \end{minipage}\hfill
 \begin{minipage}[t]{0.51\textwidth}\vspace{0pt}
-\textbf{Weather:} bad weather helps Blue slightly. Most policies do worst in \emph{calm} seas, since rough seas halve
-Red's coast-guard strength and storms pause operations and incidents (MIP-BR war rate $0.24$ calm, $0.10$ extreme).
-The policy ranking is robust. MIP-BR ($\varepsilon=0.40$) and equilibrium are first and second in all four
-scenarios, so the best policy on average is also best in the worst case. The top scorer also has the most
-wars ($0.12$--$0.29$), so $W=200$ may be too small.
+\textbf{Weather:} as in Workshop 1, bad weather helps Blue. Every policy except MIP-BR with $\varepsilon=0.40$ does
+worst in \emph{calm} seas, since rough seas halve small-hull strength, which is about half of Red's strength but less than a quarter of
+Blue's, and storms
+pause operations and incidents (MIP-BR war rate $0.34$ calm, $0.16$ extreme). The top of the ranking is the same in all
+four scenarios: MIP-BR with $\varepsilon=0.40$, then $\varepsilon=0.15$, then greedy. Only the three weakest policies
+(rule-based, equilibrium, maximin) change places. The best policy on average ($\varepsilon=0.40$, expected $3$) is also
+best in its worst case ($-88$, extreme seas).
 \end{minipage}
 
-\textbf{Designs:} De-escalation measures (D3) are best in expected and worst-case terms and cut the war rate fourfold
-($0.20\to0.05$, nominal). They also raise Red's payoff ($101\to144$), since fewer wars help both sides. We charged them
-nothing, so part of this win is by assumption. Workshop 2 will give them a cost. Dispersed basing (D1) barely
-changes Blue's payoff but cuts Red's ($101\to16$), at a higher war rate ($0.28$). Redundant sensing (D2) shows no
-measurable benefit even at zero cost, because better Blue information barely changes Blue's decisions in this model.
-\textbf{Limitations:} parameters are assumptions, and policies look one period ahead. The war rate depends strongly on
-$h$, $\mu$ and $W$, and payoff differences below about 20 are ties (s.e.\ 5--12).
+\textbf{Designs:} de-escalation measures (D3) are again best in expected and worst-case terms. They cut the war rate
+from $0.26$ to $0.11$ (nominal) \wone{$0.20\to0.05$} and raise Blue's payoff by $35$. Red's payoff rises too
+($385\to417$), since fewer wars help both sides. We still charge them nothing, so part of this win is by assumption.
+Dispersed basing (D1) leaves Blue's payoff where it was ($-421$ against $-430$) and no longer cuts Red's
+\wone{$101\to16$}, now $385\to371$. Redundant sensing (D2) is worse than the baseline ($-447$), paying its cost for no
+measurable benefit.
+\textbf{Limitations:} parameters are assumptions, policies look one period ahead, and each game ship stands for three
+real ships. Payoff differences below about $20$ are not resolved with 200 games (s.e.\ $6$--$13$).

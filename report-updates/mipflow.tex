@@ -69,5 +69,8 @@ the same program with fewer variables.
 \textbf{Check:} at every solve we checked, the program's objective equals the value of its plan recomputed by the
 game engine (\texttt{plan\_value}), and it is never below the value of the greedy plan for the same state.
 
-\textbf{Run time and the game-ship scale:} (timing to be filled in)
+\textbf{Run time and the game-ship scale:} at full size, even an earlier version of this program that approximated the
+navy share took 13 seconds to 4 minutes per solve, and a one-year game needs 360 solves (two players, 180 periods).
+With each game ship standing for three real ships (\S\ref{sec:hullscale}), a year of MIP-BR against MIP-BR takes 30 to 39
+minutes on one core. The experiments (about 12{,}400 games) therefore run as independent jobs on MIT's Engaging cluster.
 \end{addblock}

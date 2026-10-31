@@ -42,6 +42,7 @@ TYPES = {'conservative': 0.05, 'moderate': 0.15, 'aggressive': 0.40}
 # configuration is played only once, and games can be played elsewhere (for example as
 # cluster jobs, see `worker` below) and summarized here.
 GAMES = os.path.join(OUT, 'games')
+STORED_ONLY = os.environ.get('STORED_ONLY') == '1'      # summarize only games already in the store
 GAME_KEY = ['blue', 'red', 'design', 'weather', 'epsB', 'epsR', 'seed']
 GAME_COLS = ['blue_payoff', 'red_payoff', 'control_share', 'war', 'war_t', 'max_ell', 'mean_ell', 'incidents',
              'blue_fuel', 'red_fuel']
@@ -87,11 +88,14 @@ def _run(job):
     rows = []
     for seed in range(SEEDS):
         r = store.get(_key(blue, red, design, weather, epsB, epsR, seed))
+        if r is None and STORED_ONLY:
+            continue
         if r is None:
             r = play_game(blue, red, design, weather, epsB, epsR, seed,
                           os.path.join(GAMES, f'local_{os.getpid()}.csv'))
         rows.append(r)
-    s = wg.summarize(rows, blue, red, design, ())
+    s = wg.summarize(rows, blue, red, design, ()) if len(rows) > 1 else \
+        dict.fromkeys(wg.SUMMARY_COLS, float('nan')) | {'blue': blue, 'red': red, 'design': design, 'n': len(rows)}
     s.update(tag=tag, epsB=epsB, epsR=epsR, weather=weather)
     return s
 
@@ -132,14 +136,16 @@ def pm(s, key='blue_mean', se='blue_se', fmt='.1f'):
 # Section 4.1: a 2x2 posture game cut out of the template game
 # ---------------------------------------------------------------------------
 def chicken():
-    """Fix the force splits that survive iterated elimination of strictly
-    dominated strategies (Blue center-heavy N20C60S20, Red south-heavy
-    N20C20S60) and let each side choose only its posture, P or A.  This 2x2 is
+    """Fix the force splits of the pure NE that the 'equilibrium' policy plays (Workshop 1: Blue
+    center-heavy N20C60S20, Red south-heavy N20C20S60; Workshop 2: Blue even N34C33S33, Red
+    center/south N20C40S40) and let each side choose only its posture, P or A.  This 2x2 is
     a sub-matrix of the template game M_B, M_R."""
     import gurobipy as gp
     mg = wg.get_meta_game()
-    ib = {p: wg.TEMPLATE_LABELS.index(f'N20C60S20-{p}') for p in 'PA'}
-    ir = {p: wg.TEMPLATE_LABELS.index(f'N20C20S60-{p}') for p in 'PA'}
+    sel = mg.selected_nash()
+    sB, sR = (wg.TEMPLATE_LABELS[sel[0]][:-2], wg.TEMPLATE_LABELS[sel[1]][:-2]) if sel else ('N20C60S20', 'N20C20S60')
+    ib = {p: wg.TEMPLATE_LABELS.index(f'{sB}-{p}') for p in 'PA'}
+    ir = {p: wg.TEMPLATE_LABELS.index(f'{sR}-{p}') for p in 'PA'}
     U = {(pb, pr): (mg.MB[ib[pb]][ir[pr]], mg.MR[ib[pb]][ir[pr]]) for pb in 'PA' for pr in 'PA'}
     base = U['P', 'P']
     N = {k: (U[k][0] - base[0], U[k][1] - base[1]) for k in U}
@@ -168,8 +174,12 @@ def chicken():
     ceB = sum(ce[k] * N[k][0] for k in N)
     ceR = sum(ce[k] * N[k][1] for k in N)
     f = lambda x: f"({x[0]:.2f}, {x[1]:.2f})"
+    brB = {r: max('PA', key=lambda b: N[b, r][0]) for r in 'PA'}
+    brR = {b: max('PA', key=lambda r: N[b, r][1]) for b in 'PA'}
+    pne = [(b, r) for b in 'PA' for r in 'PA' if brB[r] == b and brR[b] == r]
+    mixed = 0 < qR < 1 and 0 < qB < 1
     lines = [
-        "Posture game: Blue center-heavy (N20C60S20), Red south-heavy (N20C20S60), each chooses P or A.",
+        f"Posture game: Blue {sB}, Red {sR} (the splits of the NE the equilibrium policy plays), each chooses P or A.",
         f"Raw payoffs (u_B, u_R): (P,P) {f(U['P','P'])}, (P,A) {f(U['P','A'])}, (A,P) {f(U['A','P'])}, (A,A) {f(U['A','A'])}",
         "Normalized so that (P,P) = (0,0):",
         "",
@@ -177,12 +187,16 @@ def chicken():
         "",
         f"Blue: G = {GB:.2f} (gain from asserting alone), L = {LB:.2f} (loss when only Red asserts), K = {KB:.2f} (loss when both assert)",
         f"Red:  G = {GR:.2f}, L = {LR:.2f}, K = {KR:.2f}",
-        f"Chicken: BR(P) = A because G > 0; BR(A) = P because K > L.  Pure NE: (A,P) and (P,A).",
-        f"Mixed NE: Blue asserts w.p. {qB:.3f}, Red w.p. {qR:.3f}; payoffs ({vB:.2f}, {vR:.2f}); both assert w.p. {qB * qR:.4f}",
+        f"Best responses: Blue BR(P) = {brB['P']}, BR(A) = {brB['A']}; Red BR(P) = {brR['P']}, BR(A) = {brR['A']}."
+        f"  Pure NE: {', '.join(f'({b},{r})' for b, r in pne)}",
+        (f"Mixed NE: Blue asserts w.p. {qB:.3f}, Red w.p. {qR:.3f}; payoffs ({vB:.2f}, {vR:.2f}); both assert w.p. {qB * qR:.4f}"
+         if mixed else "No fully mixed NE."),
         f"Welfare-maximizing CE: pi(P,P) = {ce['P','P']:.3f}, pi(A,P) = {ce['A','P']:.3f}, pi(P,A) = {ce['P','A']:.3f},"
         f" pi(A,A) = {ce['A','A']:.3f}; payoffs ({ceB:.2f}, {ceR:.2f})",
-        f"Grim trigger (revert to the mixed NE) sustains (P,P) iff delta >= G/(G - v): Blue {dB:.3f}, Red {dR:.3f}"
-        f" (model delta = {wg.PARAMS['delta']})",
+        (f"Reverting to the mixed NE after any assertion sustains (P,P) iff delta >= G/(G - v): Blue {dB:.3f}, Red {dR:.3f}"
+         f" (model delta = {wg.PARAMS['delta']})" if mixed else
+         "Reverting to the one-shot NE after any assertion sustains (P,P) only if each side does worse in that NE than"
+         " under (P,P): " + ', '.join(f"({b},{r}) gives Blue {N[b, r][0]:.2f}, Red {N[b, r][1]:.2f}" for b, r in pne)),
     ]
     write_md('chicken', '\n'.join(lines))
 
@@ -205,25 +219,31 @@ def template():
 # ---------------------------------------------------------------------------
 # Section 4.3: greedy heuristic vs exact MIP (optimality gap)
 # ---------------------------------------------------------------------------
+def _gap_game(seed):
+    """One mip_br vs mip_br game; at each Blue decision, (J_MIP, J_greedy, risk_MIP, risk_greedy, budget)."""
+    rows = []
+    gm = wg.Game('mip_br', 'mip_br', 'D0', (), seed=seed, weather='nominal')
+    greedy = wg.GreedyBRPolicy('B', gm.rng.__class__(seed))
+    orig_act = gm.policy['B'].act
+
+    def act(obs):
+        m_mv, m_po = orig_act(obs)
+        g_mv, g_po = greedy.act(obs)
+        Jm, rm = wg.plan_value(obs, m_mv, m_po)
+        Jg, rg = wg.plan_value(obs, g_mv, g_po)
+        rows.append((Jm, Jg, rm, rg, wg.risk_budget(obs.P['eps']['B'], obs.ell, obs.P)))
+        return m_mv, m_po
+    gm.policy['B'].act = act
+    gm.run()
+    return rows
+
+
 def gap(n_games=30):
     """At every Blue decision in n_games of mip_br vs mip_br (nominal weather),
     compare the objective of the greedy plan with the MIP optimum on the same
     observation (both evaluated with wg.plan_value)."""
-    rows = []
-    for seed in range(n_games):
-        gm = wg.Game('mip_br', 'mip_br', 'D0', (), seed=seed, weather='nominal')
-        greedy = wg.GreedyBRPolicy('B', gm.rng.__class__(seed))
-        orig_act = gm.policy['B'].act
-
-        def act(obs, orig_act=orig_act, greedy=greedy):
-            m_mv, m_po = orig_act(obs)
-            g_mv, g_po = greedy.act(obs)
-            Jm, rm = wg.plan_value(obs, m_mv, m_po)
-            Jg, rg = wg.plan_value(obs, g_mv, g_po)
-            rows.append((Jm, Jg, rm, rg, wg.risk_budget(obs.P['eps']['B'], obs.ell, obs.P)))
-            return m_mv, m_po
-        gm.policy['B'].act = act
-        gm.run()
+    with Pool(min(4, os.cpu_count() or 1)) as pool:
+        rows = [r for game in pool.map(_gap_game, range(n_games)) for r in game]
     n = len(rows)
     diffs = [jm - jg for jm, jg, *_ in rows]
     rel = sum(diffs) / sum(abs(jm) for jm, *_ in rows)

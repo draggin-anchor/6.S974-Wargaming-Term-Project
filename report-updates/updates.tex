@@ -22,6 +22,7 @@
 \newcommand{\add}[1]{\ifmmode{\color{wtwo}#1}\else\leavevmode{\color{wtwo}#1}\fi}
 \newcommand{\del}[1]{\ifmmode\text{\color{wtwodel}\sout{$#1$}}\else\leavevmode{\color{wtwodel}\sout{#1}}\fi}
 \newenvironment{addblock}{\color{wtwo}}{}
+\newcommand{\wone}[1]{{\color{gray}\scriptsize(#1)}}% Workshop 1 value, for comparison
 \setlist{nosep,leftmargin=*}
 \titlespacing*{\section}{0pt}{5pt}{2pt}
 \titlespacing*{\subsection}{0pt}{3pt}{1pt}
@@ -408,8 +409,9 @@ from ship to ship.}
 %======================================================================
 \section{Preliminary results}
 %======================================================================
-\add{\textbf{Note:} the numbers in this section are still the Workshop 1 results (60 periods, fractional hulls, no
-readiness). They will be replaced by the rerun with the changes above.}
+\add{\textbf{Note:} every number in this section is new (one-year game, Workshop 2 fleets at one game ship per three
+real ships, readiness, exact MIP, $s_h=0.12$). Workshop 1 values are shown in gray for comparison. Payoffs are discounted
+sums over 180 periods instead of 60, so they are larger in size than in Workshop 1.}
 
 \input{results.tex}
 
