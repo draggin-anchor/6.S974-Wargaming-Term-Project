@@ -58,7 +58,11 @@ def load_games():
             if fn.endswith('.csv'):
                 with open(os.path.join(GAMES, fn), newline='') as f:
                     for r in csv.DictReader(f):
-                        store[_key(*(r[k] for k in GAME_KEY))] = {c: float(r[c]) for c in GAME_COLS}
+                        try:        # war_t is empty when there was no war; skip a half-written last row
+                            store[_key(*(r[k] for k in GAME_KEY))] = {
+                                c: float(r[c]) if r[c] not in ('', 'None') else float('nan') for c in GAME_COLS}
+                        except (TypeError, ValueError, KeyError):
+                            continue
     return store
 
 
