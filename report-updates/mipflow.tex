@@ -1,0 +1,77 @@
+% !TEX root = updates.tex
+\begin{addblock}
+\subsection{The best-response MIP for the larger fleets (proposed)}\label{sec:mipflow}
+The program above is exact, but it does not scale to the Workshop 2 fleets. This subsection shows why and gives the
+version we propose. The rules of the game (\S\ref{sec:actions}--\S\ref{sec:payoffs}) do not change. Only the way the
+player's decision problem is written down changes.
+
+\textbf{Why the Workshop 1 program breaks:} it lists every count vector a zone could end up with. If $A_{k,v}$ ships
+of type $k$ could arrive at zone $v$ this period, the number of options in that zone is
+\[
+|\{b_{v,(n,p)}\}| \;=\; 2\prod_{k\in\K_i}\big(A_{k,v}+1\big).
+\]
+In Workshop 1, $|\K_\B|=1$ and $|\K_\Rd|=2$, so this was a few hundred. With the eight Blue types and, for example,
+$A_{k,v}=(12,13,16,12,2,4,9,6)$ (US destroyers, Japanese destroyers, Japanese frigates, Japan Coast Guard, LCS,
+Philippine frigates, Philippine patrol ships, Philippine Coast Guard), it is
+$2\cdot13\cdot14\cdot17\cdot13\cdot3\cdot5\cdot10\cdot7\approx8\times10^{7}$
+options in one zone. The model cannot be built, whatever the license or the run time.
+
+\textbf{Step 1, moves as flows (exact):} free ships of the same type, at the same node, with the same set of allowed
+destinations are interchangeable. Call such a set a group $g$, with type $k(g)$, location $u(g)$, allowed
+destinations $\mathcal W_g$ and size $|g|$. Replace the per-ship binaries $y_{j,w}$ by integer flows
+\[
+f_{g,w}\in\Z_{\ge0}\ \ (w\in\mathcal W_g),\qquad \textstyle\sum_{w\in\mathcal W_g}f_{g,w}=|g| .
+\]
+These are the flows $f^t_{k,uv}$ of \S\ref{sec:actions}. Every assignment of ships gives a flow and every flow gives an
+assignment, so this step changes nothing.
+
+\textbf{Step 2, options by strength level (exact for control):} control depends on the counts only through the
+side's strength. With weights $w_k(w_r)$ for the sea state (small hulls halved in rough seas), the own un-asserted
+strength in zone $v$ is
+\[
+R_v=\textstyle\sum_{k\in\K_i}w_k\Big(\bar x_{k,v}+\sum_{g:\,k(g)=k}f_{g,v}\Big).
+\]
+Every weight, halved or not, is a multiple of $0.05$, so $R_v=0.05\,m$ for an integer $m$. The option
+$b_{v,(m,p)}\in\{0,1\}$ means ``strength level $m$ and posture $p$ in zone $v$'', and the matching constraint becomes
+\[
+\textstyle\sum_{(m,p)}b_{v,(m,p)}=1,\qquad \sum_{(m,p)}0.05\,m\,b_{v,(m,p)}=R_v .
+\]
+The option values are the same formulas as before, $a_v(m,p)=V^i_v\,\beta\,\sigma_i\phi_v(m,p)-\Lambda\rho_v(m,p)$,
+with own strength $S_{i,v}=\alpha^{\1[p=\As]}\,0.05\,m$. A zone now has at most $2(M_v+1)$ options, where
+$0.05\,M_v$ is the largest strength that could gather there (a few hundred options, not $10^{7}$). Because $\phi_v$
+depends on the counts only through $S_{i,v}$, control values are exactly those of the Workshop 1 program.
+
+\textbf{The one approximation (incident risk when asserting with a mixed force):} the assert hazard blends the navy
+and coast guard values by the navy share of the side's strength in the zone,
+$h^i_{\As,v}=\theta_{i,v}h^i_{\As,\text{navy}}+(1-\theta_{i,v})h^i_{\As,\text{cg}}$ (\S\ref{sec:dynamics}).
+A strength level does not fix $\theta_{i,v}$. Inside the program the player uses $\hat\theta_{i,v}$, the navy share of
+its own ships already in zone $v$ or fixed to arrive there (its whole available fleet if there are none), so
+$\rho_v(m,p)$ is computed with $\hat\theta_{i,v}$. This affects only the player's own estimate of incident risk, and
+only in zones where it asserts with both navy and coast guard ships. The game engine still draws every incident with
+the true mix.
+
+\textbf{The program:}
+\begin{align*}
+\max_{f,\,b}\ \ &\textstyle\sum_{v\in\C}\sum_{(m,p)}a_v(m,p)\,b_{v,(m,p)}
+-\gamma\sum_{g}\sum_{w\ne u(g)}f_{g,w}-1000\,\xi
+&&\text{(control value $-$ incident cost $-$ fuel cost)}\\
+\text{s.t.}\ \ &\textstyle\sum_{w\in\mathcal W_g}f_{g,w}=|g|\quad\forall g
+&&\text{(every free ship gets one destination)}\\
+&\textstyle\sum_{g}\sum_{w\ne u(g)}f_{g,w}\le F_i-\text{(forced moves)}
+&&\text{(movement budget)}\\
+&\textstyle\sum_{(m,p)}b_{v,(m,p)}=1\quad\forall v
+&&\text{(one option per zone)}\\
+&\textstyle\sum_{(m,p)}0.05\,m\,b_{v,(m,p)}=\sum_{k}w_k\big(\bar x_{k,v}+\sum_{g:\,k(g)=k}f_{g,v}\big)\quad\forall v
+&&\text{(the option matches the moves)}\\
+&\textstyle\sum_{v\in\C}\sum_{(m,p)}\rho_v(m,p)\,b_{v,(m,p)}\le\varepsilon_i\,(1-\ell^t/L)+\xi
+&&\text{(escalation-risk budget)}\\
+&f\ \text{integer},\ b\ \text{binary},\ \xi\ge0.
+\end{align*}
+Compared with \S\ref{sec:mip}, $y$ becomes $f$, and the index $n$ (a count for each type) becomes $m$ (a strength level).
+Everything else is unchanged.
+
+\textbf{Check before we switch:} on the Workshop 1 fleet, where both programs can be built, we solve both every period
+on the same seeds and report (i) how often they choose a different plan, (ii) the gap in the objective, and (iii) the
+payoffs and war rates of MIP-BR against MIP-BR. Blue has one type there, so any difference comes from Red's mix of
+PLAN and CCG, which is exactly the approximation above.
+\end{addblock}
