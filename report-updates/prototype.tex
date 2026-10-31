@@ -1,0 +1,10 @@
+% !TEX root = report.tex
+
+\textbf{Current state:} \texttt{wargame\_gui.py} runs the model of \S3 as a \textbf{GUI} (pick each side's plan,
+Blue's design and the weather, then step through turns or run many games), as \textbf{batch} runs, or as a \textbf{trace}. \texttt{experiments.py all} regenerates
+every number in \S4.
+
+\textbf{How the code reflects the model:} \texttt{Game.step} is the timeline of \S3 with
+\eqref{eq:control}--\eqref{eq:payoff}, \texttt{MIPBRPolicy} solves the MIP of \S\ref{sec:mip} each period, and
+\texttt{MetaGame} builds $\Gamma$ and runs IESDS, NE enumeration and both LPs. \textbf{Still to build:} learning agents, an attacker that reacts to Blue, Bayesian beliefs and multi-period
+policies (\S6).

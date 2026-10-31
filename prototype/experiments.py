@@ -30,7 +30,7 @@ from multiprocessing import Pool
 import wargame_gui as wg
 
 SEEDS = int(os.environ.get('SEEDS', 200))
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.environ.get('RESULTS', 'results'))   # RESULTS=results_w2 for Workshop 2 runs
 FIG = os.path.join(OUT, 'figures')
 EPS_GRID = [0.02, 0.05, 0.10, 0.15, 0.25, 0.40]
 TYPES = {'conservative': 0.05, 'moderate': 0.15, 'aggressive': 0.40}

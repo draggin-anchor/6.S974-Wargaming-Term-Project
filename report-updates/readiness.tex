@@ -1,0 +1,35 @@
+% !TEX root = updates.tex
+\begin{addblock}
+\subsection{Readiness: maintenance, engineering casualties and oilers}\label{sec:readiness}
+A year-long game needs the things that keep a real fleet from being at sea all the time.
+
+\textbf{Maintenance:} a ship operates $M_{\text{on}}=90$ periods (six months) and then spends $M_{\text{in}}=45$
+periods (three months) in maintenance at a home port, so in steady state a third of each fleet is unavailable.
+While a ship is available its maintenance clock runs down, $r^{t+1}_j=r^t_j-1$. When $r^t_j\le0$ the ship is on
+forced return to its nearest home port (not to the oiler). On arrival it enters maintenance, $z_j=M_{\text{in}}$, and
+$z_j$ falls by one each period. When $z_j$ reaches $0$ the ship is available again with $r_j=M_{\text{on}}$ and full
+endurance $d_j=D_k$. A ship with $z_j>0$ stays in port and is not part of either player's decision.
+
+\textbf{Staggered start:} at $t=1$ a share $m_0=1/3$ of each player's ships, chosen at random, is in maintenance with
+$z^1_j$ drawn uniformly from $\{1,\dots,M_{\text{in}}\}$. Every other ship has $r^1_j$ drawn uniformly from
+$\{1,\dots,M_{\text{on}}\}$, so ships come due at different times and not all at once. These draws use their own
+random stream, so a given seed has the same maintenance schedule for every pair of policies.
+
+\textbf{Engineering casualties:} each day at sea a ship suffers an engineering casualty with probability $1\%$, so
+in a two-day period the chance is $p_c=1-0.99^2\approx0.02$. Then $e_j=1$ and the ship is on forced return to its
+nearest home port. On arrival it is repaired for $Z_c=5$ periods (ten days), $z_j=Z_c$, after which $e_j=0$ and
+$d_j=D_k$. A ship that has a casualty while heading in for maintenance is repaired during the maintenance period.
+
+\textbf{Oilers:} each player has one oiler. It is not commanded ship by ship. It follows a fixed rule that keeps it
+where its side is doing well. The side's \emph{best region} is the one with the highest value-weighted control from
+that side's point of view,
+\[
+r^{*,t}_i=\arg\max_{r\in\{\text{N},\text{C},\text{S}\}}\ \sigma_i\,\frac{\sum_{v\in r}V^i_v\,c^t_v}{\sum_{v\in r}V^i_v}.
+\]
+The oiler picks a zone of $r^{*,t}_i$ uniformly at random as its target, sails one edge per period toward it, and
+picks a new random target when it arrives or when the best region changes. So it wanders among the zones of the
+best region and follows when that region changes. Its own fuel $d^{o}_i$ falls by one per period away from port.
+When $d^{o,t}_i\le\mathrm{dist}_i(o^t_i,H_i)$ it heads for its nearest home port, and one period there refills it to
+$D_o=15$ (30 days). A ship that spends a full period in the oiler's zone without moving is refueled to $D_k$, as
+in port. The oiler obeys the same storm and port rules as warships. It adds no strength and cannot be attacked yet.
+\end{addblock}
