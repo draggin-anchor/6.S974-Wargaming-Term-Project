@@ -72,8 +72,9 @@ PARAMS = {
     # incident hazard: h = (h0 + hA_B 1[p_B=A] + hA_R 1[p_R=A]) * min(S_B,S_R) * (1 + ell/2), where a
     # side's assert hazard blends its navy and coast guard values by the navy share of its strength.
     # Workshop 1 values: h0 0.006, hA navy 0.03 (B) / 0.036 (R), hA coast guard 0.012 (R).  h_scale
-    # multiplies all hazards; it is recalibrated for the larger Workshop 2 fleets and the one-year game.
-    'h0': 0.006, 'hA_navy': {'B': 0.03, 'R': 0.036}, 'hA_cg': {'B': 0.01, 'R': 0.012}, 'h_scale': 1.0,
+    # multiplies all hazards.  Workshop 2: 0.12, so that rule-based (moderate) play on both sides ends in
+    # war in about 5% of one-year games in nominal weather (5.5% over seeds 0-399 at the 1-to-3 scale).
+    'h0': 0.006, 'hA_navy': {'B': 0.03, 'R': 0.036}, 'hA_cg': {'B': 0.01, 'R': 0.012}, 'h_scale': 0.12,
     # escalation ladder: L = armed conflict; mu = probability ell drops by one after a quiet period
     'L': 5, 'ell0': 1, 'mu': 0.25,
     # payoffs
@@ -154,7 +155,40 @@ FLEET = {
     'CN-FS': {'QDO': 6, 'NBO': 9, 'SAN': 10}, 'CCG': {'QDO': 19, 'NBO': 26, 'SAN': 30},
     'KP-DDG': {'NAM': 3}, 'KP-FS': {'NAM': 11},
 }
-FLEET_SIZE = {i: sum(sum(FLEET[k].values()) for k in KINDS[i]) for i in 'BR'}
+
+
+# One game ship stands for HULL_SCALE real ships of its type and carries HULL_SCALE times their
+# weight, so local strengths match the real fleets while the best-response MIP stays small enough
+# to solve exactly.  Each type's count is divided by HULL_SCALE and rounded (at least one ship),
+# then split over home ports by largest remainder.  HULL_SCALE = 1 plays the real fleets.
+HULL_SCALE = 3
+FLEET_REAL = FLEET
+STRENGTH_UNIT = 0.05      # every real weight w_k, also halved in rough seas, is a multiple of this
+
+
+def scale_fleet(fleet, n):
+    out = {}
+    for k, by_port in fleet.items():
+        total = max(1, int(math.floor(sum(by_port.values()) / n + 0.5)))
+        share = {p: c / n for p, c in by_port.items()}
+        alloc = {p: int(math.floor(x)) for p, x in share.items()}
+        for p in sorted(share, key=lambda p: (alloc[p] - share[p], p))[:total - sum(alloc.values())]:
+            alloc[p] += 1
+        out[k] = {p: c for p, c in alloc.items() if c > 0}
+    return out
+
+
+def set_hull_scale(n):
+    """Play with one game ship per n real ships (module-wide)."""
+    global HULL_SCALE, FLEET, FLEET_SIZE, W_K, STRENGTH_UNIT
+    HULL_SCALE = n
+    FLEET = scale_fleet(FLEET_REAL, n) if n != 1 else FLEET_REAL
+    FLEET_SIZE = {i: sum(sum(FLEET[k].values()) for k in KINDS[i]) for i in 'BR'}
+    W_K = {k: round(n * t[2], 6) for k, t in SHIP_TYPES.items()}
+    STRENGTH_UNIT = round(0.05 * n, 6)
+
+
+set_hull_scale(HULL_SCALE)
 
 # Each nation refuels and does maintenance only at its own ports (design D1 opens Subic and
 # Sasebo to US ships).  The oiler serves every ship of its side.
@@ -1364,9 +1398,6 @@ class MIPBREnumPolicy(Policy):
         return moves, post
 
 
-STRENGTH_UNIT = 0.05      # every weight w_k, also halved in rough seas, is a multiple of this
-
-
 def eval_strength(P, design, ell, me, R_own, theta_own, post_me, opp_cnt, post_opp, sea='calm'):
     """node_eval with the own side given by its un-asserted strength R_own and navy share theta_own."""
     if sea == 'storm':
@@ -1389,18 +1420,20 @@ class MIPBRPolicy(MIPBREnumPolicy):
     Workshop 1 program, written with ship flows and strength levels so it scales to
     many ship types.
 
-        max  sum_v sum_(m,p) a_v(m,p) b_{v,(m,p)} - gamma sum_{g, w != u(g)} f_{g,w} - 1000 xi
+        max  sum_v sum_(n,c,p) a_v(n,c,p) b_{v,(n,c,p)} - gamma sum_{g, w != u(g)} f_{g,w} - 1000 xi
         s.t. sum_w f_{g,w} = |g|                               (groups g of interchangeable free ships)
              sum_{g, w != u(g)} f_{g,w} <= F_i - forced moves   (movement budget)
-             sum_(m,p) b_{v,(m,p)} = 1
-             sum_(m,p) m b_{v,(m,p)} = sum_k u_k (xbar_{k,v} + sum_{g of type k} f_{g,v})
-             sum_v sum_(m,p) rho_v(m,p) b_{v,(m,p)} <= eps_i (1 - ell/L) + xi
+             sum_(n,c,p) b_{v,(n,c,p)} = 1
+             sum_(n,c,p) n b_{v,(n,c,p)} = sum_{navy k} u_k (xbar_{k,v} + sum_{g of type k} f_{g,v})
+             sum_(n,c,p) c b_{v,(n,c,p)} = sum_{coast guard k} u_k (xbar_{k,v} + sum_{g of type k} f_{g,v})
+             sum_v sum_(n,c,p) rho_v(n,c,p) b_{v,(n,c,p)} <= eps_i (1 - ell/L) + xi
              f integer, b binary
 
-    u_k = w_k / STRENGTH_UNIT (integer), so m is the own strength level R_v = 0.05 m and the
-    option values are exact for control.  The assert hazard uses theta_hat, the navy share
-    of the player's ships already at or fixed to arrive at v (else of its whole available
-    fleet): the only approximation.
+    u_k = w_k / STRENGTH_UNIT (integer).  n and c are the navy and coast guard strength levels at v,
+    so own strength is R_v = STRENGTH_UNIT (n + c) and the navy share n / (n + c): the option values
+    a_v and rho_v are exact.  In the code the options over n are piecewise-linear functions with a
+    breakpoint at every level (exact, since n is always a whole number of units), one for each
+    coast guard level c and posture p, chosen by the binary y_{v,c,p}.
     """
     name = 'mip_br'
 
@@ -1427,61 +1460,70 @@ class MIPBRPolicy(MIPBREnumPolicy):
         m.addConstr(moves_expr <= obs.fuel)
         obj = -gamma * moves_expr
         risk_terms = []
-        # fleet-wide navy share, used where the player has no ships at or fixed to v
-        avail = defaultdict(int)
-        for s in obs.ships:
-            if s.hold == 0:
-                avail[s.kind] += 1
-        theta_fleet = raw_strength(P, avail, me)[1]
-        self.options = {}
+        self.options, self.nl = {}, {}
         for v in g.contested:
             sea = obs.sea_at(v)
-            rough = sea == 'rough'
-            unit = {k: int(round(weight(P, k, rough) / STRENGTH_UNIT)) for k in KINDS[me]}
-            m0 = sum(unit[k] * n for k, n in fixed[v].items())
+            unit = {k: int(round(weight(P, k, sea == 'rough') / STRENGTH_UNIT)) for k in KINDS[me]}
             arr = [(key, unit[key[0]]) for key in groups if v in key[2]]
-            m_max = m0 + sum(u_k * len(groups[key]) for key, u_k in arr)
-            here = defaultdict(int, fixed[v])
-            for s in obs.free:
-                if s.loc == v:
-                    here[s.kind] += 1
-            raw_here, th_here = raw_strength(P, here, me, rough)
-            theta = th_here if raw_here > 0 else theta_fleet
             opp_cnt, opp_post = obs.opp_counts(v), obs.opp_posture(v)
 
-            def option(lvl, p):
-                phi, rho = eval_strength(P, obs.design, ell, me, lvl * STRENGTH_UNIT, theta, p, opp_cnt, opp_post, sea)
+            def option(n, c, p):
+                th = n / (n + c) if n + c > 0 else 1.0
+                phi, rho = eval_strength(P, obs.design, ell, me, (n + c) * STRENGTH_UNIT, th, p, opp_cnt, opp_post, sea)
                 return VALUE[me][v] * lam * H * phi - Lam * rho, rho
-            a0, r0 = option(0, 'P')
-            if m_max == 0:
-                obj += a0
+
+            # navy and coast guard levels: fixed arrivals plus flows of free groups
+            # and the levels that can actually occur there (breakpoints are needed only at those)
+            lev, top, reach = {}, {}, {}
+            for cl in ('navy', 'cg'):
+                base = sum(unit[k] * n for k, n in fixed[v].items() if CLASS_K[k] == cl)
+                terms = [(key, u_k) for key, u_k in arr if CLASS_K[key[0]] == cl]
+                lev[cl] = base + gp.quicksum(u_k * f[key, v] for key, u_k in terms)
+                top[cl] = base + sum(u_k * len(groups[key]) for key, u_k in terms)
+                levels = {base}
+                for key, u_k in terms:
+                    levels = {x + j * u_k for x in levels for j in range(len(groups[key]) + 1)}
+                reach[cl] = sorted(levels)
+
+            if top['navy'] + top['cg'] == 0:
+                obj += option(0, 0, 'P')[0]
                 continue
-            # one option per strength level and posture, written as piecewise-linear functions of the
-            # level (exact: the level is always a whole number of units).  The level is split into a
-            # patrol part and an assert part, and the binary z_v allows only one of them to be nonzero.
-            lvl = {p: m.addVar(lb=0, ub=m_max) for p in 'PA'}
-            z = m.addVar(vtype='B')
-            m.addConstr(lvl['P'] + lvl['A'] == m0 + gp.quicksum(u_k * f[key, v] for key, u_k in arr))
-            m.addConstr(lvl['A'] <= m_max * z)
-            m.addConstr(lvl['P'] <= m_max * (1 - z))
-            step = P.get('mip_step', 1)
-            xs = sorted(set(range(0, min(m_max, P.get('mip_dense', m_max)) + 1)) | set(range(0, m_max + 1, step)) | {m_max})
-            for p in 'PA':
-                vals = [option(x, p) for x in xs]
-                av, rv = m.addVar(lb=-gp.GRB.INFINITY), m.addVar(lb=0.0)
-                m.addGenConstrPWL(lvl[p], av, xs, [a for a, _ in vals])
-                m.addGenConstrPWL(lvl[p], rv, xs, [r for _, r in vals])
-                obj += av
-                risk_terms.append(rv)
-            obj -= a0                                     # option(0) is counted in both parts
-            self.options[v] = (lvl, z)
+            y, lvl = {}, {}
+
+            def add_option(key, levels, val):
+                # value and risk as piecewise-linear functions of the level, with a breakpoint at every
+                # level that can occur; when the option is off its level is 0, so the value at 0 is
+                # taken back out
+                x_max = levels[-1]
+                y[key] = m.addVar(vtype='B')
+                lvl[key] = m.addVar(lb=0, ub=x_max)
+                m.addConstr(lvl[key] <= x_max * y[key])
+                xs = sorted(set(levels) | {0})
+                vals = [val(x) for x in xs]
+                if len(xs) == 1:                     # level fixed at 0 (Gurobi needs two breakpoints)
+                    xs, vals = [0, 1], vals * 2
+                av, rv = m.addVar(lb=-gp.GRB.INFINITY), m.addVar(lb=-gp.GRB.INFINITY)
+                m.addGenConstrPWL(lvl[key], av, xs, [a for a, _ in vals])
+                m.addGenConstrPWL(lvl[key], rv, xs, [r for _, r in vals])
+                risk_terms.append(rv - vals[0][1] * (1 - y[key]))
+                return av - vals[0][0] * (1 - y[key])
+
+            # patrol: only the total level matters (the navy share enters only the own assert hazard)
+            total = sorted({a + b for a in reach['navy'] for b in reach['cg']})
+            obj += add_option(('P', None), total, lambda x: option(x, 0, 'P'))
+            # assert: one option per coast guard level c, over the navy level
+            for c in reach['cg']:
+                obj += add_option(('A', c), reach['navy'], lambda x, c=c: option(x, c, 'A'))
+            cg_patrol = m.addVar(lb=0, ub=top['cg'])
+            m.addConstr(cg_patrol <= top['cg'] * y['P', None])
+            m.addConstr(gp.quicksum(y.values()) == 1)
+            m.addConstr(gp.quicksum(c * y['A', c] for c in reach['cg']) + cg_patrol == lev['cg'])
+            m.addConstr(lvl['P', None] + gp.quicksum(lvl['A', c] + c * y['A', c] for c in reach['cg'])
+                        == lev['navy'] + lev['cg'])
+            self.options[v], self.nl[v] = y, lvl
         slack = m.addVar(lb=0.0)
         m.addConstr(gp.quicksum(risk_terms) <= eps + slack)
         m.setObjective(obj - 1000.0 * slack, gp.GRB.MAXIMIZE)
-        if 'mip_gap' in P:
-            m.Params.MIPGap = P['mip_gap']
-        if 'mip_time' in P:
-            m.Params.TimeLimit = P['mip_time']
         m.optimize()
         moves = {}
         for key, members in groups.items():
@@ -1492,13 +1534,14 @@ class MIPBRPolicy(MIPBREnumPolicy):
             for w, n in todo:
                 for _ in range(n):
                     moves[pool.pop(0).id] = w
-        post = {}
-        for v, (lvl, z) in self.options.items():
-            if lvl['P'].X + lvl['A'].X > 0.5:
-                post[v] = 'A' if z.X > 0.5 else 'P'
+        post, nl_of = {}, self.nl
+        for v, y in self.options.items():
+            for (p, c), var in y.items():
+                if var.X > 0.5 and (c or 0) + nl_of[v][p, c].X > 0.5:
+                    post[v] = p
         self.last_obj = m.ObjVal
+        self.last_slack = slack.X
         return moves, post
-
 
 
 # ============================================================================

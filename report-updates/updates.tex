@@ -135,14 +135,15 @@ $t=T=\del{60}\add{180}$.
 \toprule
 Symbol & Meaning & Value\\\midrule
 $T$; $\delta$ & periods (2 days); discount & \del{60}\add{180}; 0.98\\
-$N_k$ & fleet size & 10 DDG; 8 PLAN, 6 CCG\\
-$D_k$ & endurance (periods) & 10 DDG; 8 PLAN; 6 CCG\\
-$F_i$ & movement budget (moves/period) & 8 Blue; 10 Red\\
-$w_k$ & strength per hull (rough seas) & 1 DDG, PLAN; 0.6 CCG (0.3)\\
+$N_k$ & fleet size & \del{10 DDG; 8 PLAN, 6 CCG}\add{Table~\ref{tab:fleet}}\\
+$D_k$ & endurance (periods) & \del{10 DDG; 8 PLAN; 6 CCG}\add{Table~\ref{tab:fleet}}\\
+$F_i$ & movement budget (moves/period) & \del{8 Blue; 10 Red}\add{23 Blue; 40 Red}\\
+$w_k$ & strength per hull (rough seas) & \del{1 DDG, PLAN; 0.6 CCG (0.3)}\add{Table~\ref{tab:fleet}}\\
 $\alpha$ & assert multiplier & 1.5\\
 $\kappa$; $\lambda$ & presence damping; control rate & 1; 0.3\\
 $h_0$ & baseline incident hazard & 0.006\\
-$h^\B_\As$; $h^\Rd_\As$ & assert hazard & 0.03; 0.036/0.012 PLAN/CCG\\
+$h^\B_\As$; $h^\Rd_\As$ & assert hazard & \del{0.03; 0.036/0.012 PLAN/CCG}\add{0.03/0.01; 0.036/0.012 navy/coast guard}\\
+\add{$s_h$} & \add{hazard scale} & \add{0.12}\\
 \bottomrule
 \end{tabular}
 \end{minipage}\hfill
@@ -171,22 +172,29 @@ war is uncommon but not rare (0--34\% of games).}
 \end{table}
 
 \subsection{Players, map and time}\label{sec:setup}
-\textbf{Players:} $\I=\{\B,\Rd\}$. Blue is the U.S.\ Navy, $\K_\B=\{\text{DDG}\}$. Red is China, with navy ships and
-coast guard or maritime militia hulls, $\K_\Rd=\{\text{PLAN},\text{CCG}\}$ (fleets in Table~\ref{tab:params}).
-% TODO (Workshop 2): LCS were cut from Section 1 for now. Add them as a second Blue type
-% (count, strength weight w_k, endurance D_k) here, in Table 1 and in the code.
+\textbf{Players:} $\I=\{\B,\Rd\}$. \del{Blue is the U.S.\ Navy, $\K_\B=\{\text{DDG}\}$. Red is China, with navy ships and
+coast guard or maritime militia hulls, $\K_\Rd=\{\text{PLAN},\text{CCG}\}$ (fleets in Table~\ref{tab:params}).}
+\add{Blue is the United States with Japan and the Philippines, with eight ship types $\K_\B$. Red is China with North Korea,
+with six types $\K_\Rd$ (Table~\ref{tab:fleet}). Each type is navy or coast guard. Coast guard and maritime militia
+hulls are grouped as coast guard.}
+
+\input{fleet.tex}
 
 \textbf{Map:} the theater is an undirected graph $G=(\V,\E)$. Its nodes are home
 ports, where ships refuel, and eight contested zones
 $\C=\{\text{SEN},\text{MIY},\text{TWN},\text{EOT},\text{LUZ},\text{SCB},\text{STS},\text{PAR}\}$ (Senkakus, Miyako
 Strait, Taiwan Strait, east of Taiwan, Luzon Strait, Scarborough Shoal, Second Thomas Shoal, Paracels). Blue's
-home ports are $H_\B=\{\text{YOK},\text{GUA}\}$ (Yokosuka, Guam) and Red's are $H_\Rd=\{\text{NBO},\text{SAN}\}$
-(Ningbo, Sanya)\footnote{NBO and SAN stand for the Ningbo--Zhoushan and Hainan (Yulin) basing areas. CCG and militia ports are folded into them.}. An edge joins two nodes a ship can sail between in
+home ports are $H_\B=\{\text{YOK},\text{GUA}\add{,\text{SAS},\text{ISG},\text{PHL}}\}$ (Yokosuka, Guam\add{, Sasebo, Ishigaki, Subic Bay}) and Red's are $H_\Rd=\{\add{\text{QDO},}\text{NBO},\text{SAN}\add{,\text{NAM}}\}$
+(\add{Qingdao, }Ningbo, Sanya\add{, Nampo})\footnote{NBO and SAN stand for the Ningbo--Zhoushan and Hainan (Yulin) basing areas. CCG and militia ports are folded into them.}.
+\add{Ports are national. A ship of nation $a$ refuels and does maintenance only at its nation's ports $H_a$: U.S.\ ships
+at YOK and GUA, Japanese ships at YOK, SAS and ISG, Philippine ships at PHL, Chinese ships at QDO, NBO and SAN, North
+Korean ships at NAM. Design D1 also opens PHL and SAS to U.S.\ ships. The new ports join the zones next to them
+(PHL to SCB, LUZ, STS. SAS to SEN, MIY. ISG to SEN, MIY, EOT, TWN. QDO to SEN, NBO, NAM).} An edge joins two nodes a ship can sail between in
 one period. The zones form three regions that share weather: North $=\{\text{SEN},\text{MIY}\}$, Center
 $=\{\text{TWN},\text{EOT},\text{LUZ}\}$, South $=\{\text{SCB},\text{STS},\text{PAR}\}$. Zone $v$ is worth $V^i_v$
 to player $i$ (Table~\ref{tab:zones}, e.g.\ Scarborough Shoal and the Paracels matter more to Red).
 
-\textbf{Time:} periods $t=1,\dots,T$ of two days, $T=$ \del{60 (about four months)}\add{180 (one year)}, discounted by $\delta$ per period. All ships start in port with full endurance, split evenly between each side's two ports\add{. A third of each fleet starts in maintenance (\S\ref{sec:readiness})}.
+\textbf{Time:} periods $t=1,\dots,T$ of two days, $T=$ \del{60 (about four months)}\add{180 (one year)}, discounted by $\delta$ per period. All ships start in port with full endurance, \del{split evenly between each side's two ports}\add{at their home ports (Table~\ref{tab:fleet})}\add{. A third of each fleet starts in maintenance (\S\ref{sec:readiness})}.
 
 \begin{table}[H]\centering\small
 \begin{minipage}[t]{0.56\textwidth}\vspace{0pt}\centering
@@ -235,7 +243,7 @@ the start, when all ships are in port), so moves are chosen at information sets 
 $\omega\in\Omega=\{$calm, nominal, typhoon, extreme$\}$ with weights $\pi_\omega$, each period a region
 not already in a storm enters one with probability $p_s(\omega)$, and is otherwise rough with probability
 $p_r(\omega)$ (Table~\ref{tab:zones}). A storm lasts three periods. It closes the region's zones (no entry, ships
-inside stay), stops incidents there and freezes their control. Rough seas halve CCG strength and degrade detection.
+inside stay), stops incidents there and freezes their control. Rough seas halve \del{CCG}\add{small-hull} strength and degrade detection.
 
 \subsection{Actions and constraints}\label{sec:actions}
 \textbf{Actions:} each period both players choose, simultaneously, a destination for each ship (stay, or sail one
@@ -281,12 +289,16 @@ c^{t+1}_v=(1-\lambda)\,c^t_v+\lambda\,\phi_v .\label{eq:control}
 \textbf{3. Incidents:} an incident (a collision, an unsafe interaction, negative media coverage) can happen only
 where both sides have ships. It occurs with probability $\rho_v=1-e^{-h_v}$, where the \emph{hazard} $h_v$ is
 \begin{equation}
-h_v=\big(h_0+h^\B_\As\,\1[p_{\B,v}=\As]+h^\Rd_{\As,v}\,\1[p_{\Rd,v}=\As]\big)\cdot\min\{S_{\B,v},S_{\Rd,v}\}
+h_v=\add{s_h}\big(h_0+h^\B_{\As\add{,v}}\,\1[p_{\B,v}=\As]+h^\Rd_{\As,v}\,\1[p_{\Rd,v}=\As]\big)\cdot\min\{S_{\B,v},S_{\Rd,v}\}
 \cdot\big(1+\ell^t/2\big).\label{eq:hazard}
 \end{equation}
-(i) A small baseline hazard $h_0$, plus a term for each side that asserts. Red's assert
+(i) A small baseline hazard $h_0$, plus a term for each side that asserts. \del{Red's assert
 hazard $h^\Rd_{\As,v}=\theta_v h^\Rd_{\As,\text{PLAN}}+(1-\theta_v)h^\Rd_{\As,\text{CCG}}$ blends its navy and coast
-guard values by $\theta_v$, the PLAN share of Red's strength at $v$, so coast guard pressure is less escalatory.
+guard values by $\theta_v$, the PLAN share of Red's strength at $v$}\add{Each side's assert hazard
+$h^i_{\As,v}=\theta_{i,v}h^i_{\As,\text{navy}}+(1-\theta_{i,v})h^i_{\As,\text{cg}}$ blends its navy and coast guard values by
+$\theta_{i,v}$, the navy share of its strength at $v$}, so coast guard pressure is less escalatory.
+\add{The scale $s_h$ multiplies all hazards. It is set so that rule-based play on both sides ends in war in about 5\% of
+one-year games in nominal weather.}
 (ii) More ships in contact mean more encounters, limited by the smaller force. (iii) Incidents are likelier when
 tension is high ($2.5\times$ at $\ell=3$).
 
@@ -422,6 +434,13 @@ PROTECT: A deployed game theoretic system to protect the ports of the United Sta
 \bibitem[Washburn and Wood(1995)]{washburn1995} Washburn, A., and Wood, K. (1995). Two-person zero-sum games for network interdiction. \emph{Operations Research}, 43(2), 243--251.
 \bibitem[Wasser et~al.(2019)]{wasser2019} Wasser, B., Oberholtzer, J., Pettyjohn, S. L., and Mackenzie, W. (2019).
 \emph{Gaming Gray Zone Tactics: Design Considerations for a Structured Strategic Game} (RR-2915-A). RAND Corporation. \url{https://doi.org/10.7249/RR2915}
+\add{\bibitem[O'Rourke(2025)]{orourke2025} O'Rourke, R. (2025). \emph{China Naval Modernization: Implications for U.S. Navy Capabilities} (RL33153). Congressional Research Service. \url{https://www.congress.gov/crs-product/RL33153}}
+\add{\bibitem[Wikipedia(2026a)]{seventhfleet} Wikipedia (2026a). United States Seventh Fleet. \url{https://en.wikipedia.org/wiki/United_States_Seventh_Fleet}, accessed Oct.\ 30, 2026.}
+\add{\bibitem[Wikipedia(2026b)]{jmsdf} Wikipedia (2026b). List of active Japan Maritime Self-Defense Force ships. \url{https://en.wikipedia.org/wiki/List_of_active_Japan_Maritime_Self-Defense_Force_ships}, accessed Oct.\ 30, 2026.}
+\add{\bibitem[AMTI(2026)]{amti_jcg} Asia Maritime Transparency Initiative. The Japan Coast Guard: resourcing and responsibility. CSIS. \url{https://amti.csis.org/the-japan-coast-guard-resourcing-and-responsibility/}}
+\add{\bibitem[Wikipedia(2026c)]{phnavy} Wikipedia (2026c). List of equipment of the Philippine Navy. \url{https://en.wikipedia.org/wiki/List_of_equipment_of_the_Philippine_Navy}, accessed Oct.\ 30, 2026.}
+\add{\bibitem[Janes(2026)]{janes_pcg} Janes. Philippine Coast Guard to receive five more OPVs with Japanese assistance. \url{https://janes.com/defence-news/philippine-coast-guard-to-receive-five-more-opvs-with-japanese-assistance}}
+\add{\bibitem[Wikipedia(2026d)]{kpn} Wikipedia (2026d). List of active ships of the Korean People's Navy. \url{https://en.wikipedia.org/wiki/List_of_active_ships_of_the_Korean_People\%27s_Navy}, accessed Oct.\ 30, 2026.}
 \bibitem[WPNS(2014)]{cues2014} Western Pacific Naval Symposium (2014). \emph{Code for Unplanned Encounters at Sea (CUES)}.
 \end{thebibliography}
 \noindent\small\textbf{AI usage:} AI models such as Claude and ChatGPT were used to assist in formulating the model, reviewing and

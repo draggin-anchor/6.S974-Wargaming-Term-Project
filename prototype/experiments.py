@@ -38,12 +38,57 @@ EPS_GRID = [0.02, 0.05, 0.10, 0.15, 0.25, 0.40]
 TYPES = {'conservative': 0.05, 'moderate': 0.15, 'aggressive': 0.40}
 
 
+# Every finished game is stored in OUT/games/*.csv, one row per (configuration, seed), so a
+# configuration is played only once, and games can be played elsewhere (for example as
+# cluster jobs, see `worker` below) and summarized here.
+GAMES = os.path.join(OUT, 'games')
+GAME_KEY = ['blue', 'red', 'design', 'weather', 'epsB', 'epsR', 'seed']
+GAME_COLS = ['blue_payoff', 'red_payoff', 'control_share', 'war', 'war_t', 'max_ell', 'mean_ell', 'incidents',
+             'blue_fuel', 'red_fuel']
+
+
+def _key(blue, red, design, weather, epsB, epsR, seed):
+    return (blue, red, design, weather, f'{float(epsB):g}', f'{float(epsR):g}', int(seed))
+
+
+def load_games():
+    store = {}
+    if os.path.isdir(GAMES):
+        for fn in sorted(os.listdir(GAMES)):
+            if fn.endswith('.csv'):
+                with open(os.path.join(GAMES, fn), newline='') as f:
+                    for r in csv.DictReader(f):
+                        store[_key(*(r[k] for k in GAME_KEY))] = {c: float(r[c]) for c in GAME_COLS}
+    return store
+
+
+def play_game(blue, red, design, weather, epsB, epsR, seed, out_file):
+    """Play one game and append its row to out_file."""
+    m = wg.Game(blue, red, design, (), seed=seed, weather=weather,
+                params={'eps': {'B': epsB, 'R': epsR}}).run().metrics()
+    os.makedirs(GAMES, exist_ok=True)
+    new = not os.path.exists(out_file)
+    with open(out_file, 'a', newline='') as f:
+        w = csv.writer(f)
+        if new:
+            w.writerow(GAME_KEY + GAME_COLS)
+        w.writerow([blue, red, design, weather, epsB, epsR, seed] + [m[c] for c in GAME_COLS])
+    return m
+
+
 def _run(job):
-    """Worker: one configuration -> summary dict."""
+    """Worker: one configuration -> summary dict (stored games are reused)."""
     tag, blue, red, design, weather, epsB, epsR = job
-    s, _ = wg.run_batch(blue, red, design, (), seeds=SEEDS, weather=weather,
-                        params={'eps': {'B': epsB, 'R': epsR}})
-    s.update(tag=tag, epsB=epsB, epsR=epsR)
+    store = load_games()
+    rows = []
+    for seed in range(SEEDS):
+        r = store.get(_key(blue, red, design, weather, epsB, epsR, seed))
+        if r is None:
+            r = play_game(blue, red, design, weather, epsB, epsR, seed,
+                          os.path.join(GAMES, f'local_{os.getpid()}.csv'))
+        rows.append(r)
+    s = wg.summarize(rows, blue, red, design, ())
+    s.update(tag=tag, epsB=epsB, epsR=epsR, weather=weather)
     return s
 
 
@@ -200,7 +245,7 @@ def gap(n_games=30):
 # RQ1: frontier and risk-budget game
 # ---------------------------------------------------------------------------
 def frontier():
-    jobs = [('frontier', 'mip_br', 'mip_br', 'D0', 'nominal', e, 0.15) for e in EPS_GRID]
+    jobs = jobs_of('frontier')
     res = run_jobs(jobs, 'frontier')
     rows = [[f"{s['epsB']:.2f}", f"{s['control_share']:+.3f} ± {s['control_se']:.3f}",
              f"{s['war_rate']:.2f} ± {s['war_se']:.2f}", pm(s), pm(s, 'red_mean', 'red_se'), f"{s['incidents']:.1f}"]
@@ -232,8 +277,7 @@ def frontier():
 
 
 def riskgame():
-    jobs = [('riskgame', 'mip_br', 'mip_br', 'D0', 'nominal', eb, er)
-            for eb in TYPES.values() for er in TYPES.values()]
+    jobs = jobs_of('riskgame')
     res = run_jobs(jobs, 'riskgame')
     names = list(TYPES)
     M = {(s['epsB'], s['epsR']): s for s in res}
@@ -268,7 +312,7 @@ RED_POLICIES = ['moderate', 'mip_br', 'equilibrium']
 
 
 def policies():
-    jobs = [('policies', b, r, 'D0', 'nominal', 0.15, 0.15) for b in BLUE_POLICIES for r in RED_POLICIES]
+    jobs = jobs_of('policies')
     res = run_jobs(jobs, 'policies')
     M = {(s['blue'], s['red']): s for s in res}
     rows = []
@@ -303,7 +347,7 @@ def load(name):
 
 def weather(run=True):
     if run:
-        jobs = [('weather', b, 'mip_br', 'D0', w, e, 0.15) for b, e in WX_BLUE for w in wg.WEATHER]
+        jobs = jobs_of('weather')
         run_jobs(jobs, 'weather')
     res = load('weather')
     M = {(s['blue'], s['epsB'], s['weather']): s for s in res}
@@ -354,7 +398,7 @@ def weather(run=True):
 
 
 def designs():
-    jobs = [('designs', 'mip_br', 'mip_br', d, w, 0.15, 0.15) for d in wg.DESIGNS for w in wg.WEATHER]
+    jobs = jobs_of('designs')
     res = run_jobs(jobs, 'designs')
     M = {(s['design'], s['weather']): s for s in res}
     pi = {w: wg.WEATHER[w]['pi'] for w in wg.WEATHER}
@@ -514,9 +558,88 @@ def mipcheck(n_games=40, n_batch=SEEDS):
 
 ALL = ['chicken', 'template', 'gap', 'frontier', 'riskgame', 'policies', 'weather', 'designs']
 
+
+def jobs_of(name):
+    """Configurations (tag, blue, red, design, weather, eps_B, eps_R) of one experiment."""
+    return {
+        'frontier': [('frontier', 'mip_br', 'mip_br', 'D0', 'nominal', e, 0.15) for e in EPS_GRID],
+        'riskgame': [('riskgame', 'mip_br', 'mip_br', 'D0', 'nominal', eb, er)
+                     for eb in TYPES.values() for er in TYPES.values()],
+        'policies': [('policies', b, r, 'D0', 'nominal', 0.15, 0.15) for b in BLUE_POLICIES for r in RED_POLICIES],
+        'weather': [('weather', b, 'mip_br', 'D0', w, e, 0.15) for b, e in WX_BLUE for w in wg.WEATHER],
+        'designs': [('designs', 'mip_br', 'mip_br', d, w, 0.15, 0.15) for d in wg.DESIGNS for w in wg.WEATHER],
+    }[name]
+
+
+# Headline setups, played first: the RQ1 frontier and risk game, RQ2 policies against Red MIP-BR,
+# RQ3 designs and typhoon weather.
+HEADLINE_SEEDS = 50
+
+
+def headline(job):
+    tag, blue, red, design, weather, epsB, epsR = job
+    return weather in ('nominal', 'typhoon') and (tag in ('frontier', 'riskgame') or red == 'mip_br') and \
+        (tag != 'weather' or blue == 'mip_br') and (weather == 'nominal' or (design == 'D0' and blue == red and epsB == 0.15))
+
+
+def game_list(names=('frontier', 'riskgame', 'policies', 'weather', 'designs')):
+    """Every game of the suite once, headline setups first (seeds below HEADLINE_SEEDS), then the rest."""
+    configs = list(dict.fromkeys(j[1:] for name in names for j in jobs_of(name)))
+    first = [c + (sd,) for c in configs if headline(('',) + c) for sd in range(HEADLINE_SEEDS)]
+    done = set(first)
+    rest = [c + (sd,) for c in configs for sd in range(SEEDS) if c + (sd,) not in done]
+    return first + rest
+
+
+def worker(stale_hours=3.0):
+    """Cluster job: play the suite's games in order, one at a time, until none is left.
+
+    Any number of workers can run at once (on any partition).  A worker claims a game by creating
+    GAMES/claims/<game>.claim (atomic), so no game is played twice.  A claim older than stale_hours
+    without a stored result (its job was stopped) is taken over."""
+    import socket
+    claims = os.path.join(GAMES, 'claims')
+    os.makedirs(claims, exist_ok=True)
+    out = os.path.join(GAMES, f'{socket.gethostname()}_{os.getpid()}.csv')
+    games = game_list()
+    while True:
+        store = load_games()
+        todo = None
+        for i, g in enumerate(games):
+            if _key(*g) in store:
+                continue
+            path = os.path.join(claims, '_'.join(map(str, g)) + '.claim')
+            try:
+                os.close(os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+            except FileExistsError:
+                if time.time() - os.path.getmtime(path) < stale_hours * 3600:
+                    continue
+                os.utime(path)                 # stale claim: take it over
+            todo = (i, g)
+            break
+        if todo is None:
+            print('no games left', flush=True)
+            return
+        i, g = todo
+        t0 = time.time()
+        m = play_game(*g, out)
+        print(f"game {i}: {g} u_B {m['blue_payoff']:.1f} war {m['war']:.0f} in {time.time() - t0:.0f}s", flush=True)
+
+
+def plan():
+    """Print how many games the suite has and how many are already stored."""
+    store = load_games()
+    games = game_list()
+    first = sum(1 for g in games if g[-1] < HEADLINE_SEEDS and headline(('',) + g[:-1]))
+    mip = sum(1 for g in games if 'mip_br' in g[:2])
+    print(f"{len(games)} games ({first} headline, {mip} with MIP-BR), {sum(_key(*g) in store for g in games)} stored")
+
 if __name__ == '__main__':
     which = sys.argv[1:] or ['all']
     if which == ['all']:
         which = ALL
+    if which[0] == 'worker':
+        worker(*map(float, which[1:2]))
+        sys.exit()
     for name in which:
         globals()[name]()

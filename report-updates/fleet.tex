@@ -1,0 +1,44 @@
+% !TEX root = updates.tex
+\begin{addblock}
+\begin{table}[H]\centering\small\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llllcccl@{}}
+\toprule
+Side & Nation & Type $k$ & Ships & $w_k$ & $D_k$ & Real / game & Home ports (real)\\\midrule
+Blue & U.S. & US-DDG & destroyers and cruisers, 7th Fleet & 1.0 & 10 & 12 / 4 & YOK 12\\
+ & & US-LCS & littoral combat ships$^*$ & 0.5 & 5 & 2 / 1 & GUA 2\\
+ & Japan & JP-DDG & JMSDF destroyers & 1.0 & 10 & 26 / 9 & YOK 13, SAS 13\\
+ & & JP-FF & JMSDF frigates and escorts & 0.7 & 8 & 16 / 5 & SAS 16\\
+ & & JCG & Japan Coast Guard large patrol vessels & 0.6 & 6 & 12 / 4 & ISG 12\\
+ & Philippines & PH-FF & Philippine Navy frigates & 0.7 & 8 & 4 / 1 & PHL 4\\
+ & & PH-PS & corvettes and offshore patrol vessels$^*$ & 0.4 & 5 & 9 / 3 & PHL 9\\
+ & & PCG & Philippine Coast Guard cutters$^*$ & 0.6 & 6 & 6 / 2 & PHL 6\\\midrule
+Red & China & CN-DDG & PLAN destroyers & 1.0 & 10 & 30 / 10 & QDO 8, NBO 10, SAN 12\\
+ & & CN-FF & PLAN frigates & 0.7 & 8 & 27 / 9 & QDO 7, NBO 9, SAN 11\\
+ & & CN-FS & PLAN corvettes$^*$ & 0.4 & 5 & 25 / 8 & QDO 6, NBO 9, SAN 10\\
+ & & CCG & China Coast Guard large cutters$^*$ & 0.6 & 6 & 75 / 25 & QDO 19, NBO 26, SAN 30\\
+ & North Korea & KP-DDG & destroyers & 1.0 & 8 & 3 / 1 & NAM 3\\
+ & & KP-FS & light frigates and corvettes$^*$ & 0.3 & 5 & 11 / 4 & NAM 11\\\midrule
+\multicolumn{6}{@{}l}{Totals} & \multicolumn{2}{l}{Blue 87 / 29, Red 171 / 57}\\
+\bottomrule
+\end{tabular}
+\caption{Fleets in theater (no aircraft carriers). Counts are our estimates of the ships each nation keeps in or near
+the theater, from open sources \citep{orourke2025,seventhfleet,jmsdf,amti_jcg,phnavy,janes_pcg,kpn}. The Chinese
+side is about half of the PLAN and CCG totals, for the share facing this theater. $w_k$ is the strength weight
+(destroyers and cruisers highest), $D_k$ the endurance in two-day periods. Types marked $^*$ are small hulls whose
+strength is halved in rough seas. ``Game'' is the number of game ships, each standing for three real ships
+(\S\ref{sec:hullscale}).}
+\label{tab:fleet}
+\end{table}
+
+\textbf{Game ships stand for three real ships:}\label{sec:hullscale} the best-response program (\S\ref{sec:mipflow}) takes too
+long to solve at full size. We therefore play with one game ship for every
+$s=3$ real ships of the same type. A game ship has weight $s\,w_k$, so the local strengths $S_{i,v}$, and with them control and
+incident hazards, stay on the scale of the real fleets. Each type's count is divided by $s$ and rounded, with at least one ship
+per type, and split over home ports by largest remainder:
+\[
+N^{\text{game}}_k=\max\!\big(1,\ \mathrm{round}(N_k/s)\big),\qquad
+N^{\text{game}}_{k,h}=\lfloor N_{k,h}/s\rfloor+\1\big[h\text{ is among the }N^{\text{game}}_k-\textstyle\sum_{h'}\lfloor N_{k,h'}/s\rfloor\text{ ports with the largest remainders}\big].
+\]
+Every ship-level rule (endurance, maintenance, engineering casualties, oiler) applies to a game ship as a whole. The
+movement budget counts game-ship moves, $F_i=\mathrm{round}(f_i N^{\text{game}}_i)$ with $f_\B=0.8$ and $f_\Rd=0.7$.
+\end{addblock}
