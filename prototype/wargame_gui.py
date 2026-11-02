@@ -1906,6 +1906,57 @@ def attach_replay(game, rec):
         game.policy[i] = ReplayPolicy(i, game.rng, decisions, game.policy_names[i])
 
 
+def use_replay(game):
+    """Swap a game's MIP-BR side(s) for their recording when one exists.
+
+    Returns None if no side plays MIP-BR, True if a recording was attached, False if MIP-BR must run live
+    (no recording for this setup and seed, Red attacks on, or more turns than the recorded year)."""
+    if 'mip_br' not in game.policy_names.values():
+        return None
+    if game.attacks or game.T > PARAMS['T']:
+        return False
+    eps = game.P['eps']
+    rec = load_replay(replay_path(game.policy_names['B'], game.policy_names['R'], game.design, game.weather,
+                                  eps['B'], eps['R'], game.seed))
+    if rec is None:
+        return False
+    attach_replay(game, rec)
+    return True
+
+
+# Finished suite games (experiments.py writes one row per setup and seed).  The GUI's 'Run many games'
+# reads these instead of replaying games that are already stored.
+GAMES_W2 = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results_w2', 'games')
+STORED_COLS = ['blue_payoff', 'red_payoff', 'control_share', 'war', 'war_t', 'max_ell', 'mean_ell', 'incidents',
+               'blue_fuel', 'red_fuel']
+_stored = None
+
+
+def stored_key(blue, red, design, weather, epsB, epsR, seed):
+    return (blue, red, design, weather, f'{float(epsB):g}', f'{float(epsR):g}', int(seed))
+
+
+def stored_games():
+    """{stored_key: metrics row} for every game in results_w2/games/*.csv (read once)."""
+    global _stored
+    if _stored is None:
+        _stored = {}
+        if os.path.isdir(GAMES_W2):
+            for fn in sorted(os.listdir(GAMES_W2)):
+                if not fn.endswith('.csv'):
+                    continue
+                with open(os.path.join(GAMES_W2, fn), newline='') as f:
+                    for r in csv.DictReader(f):
+                        try:
+                            key = stored_key(*(r[k] for k in ('blue', 'red', 'design', 'weather', 'epsB', 'epsR', 'seed')))
+                            row = {c: float(r[c]) if r[c] not in ('', 'None') else '' for c in STORED_COLS}
+                        except (TypeError, ValueError, KeyError):
+                            continue        # half-written last row
+                        row['seed'] = key[-1]
+                        _stored[key] = row
+    return _stored
+
+
 # ============================================================================
 # 10.  GUI (tkinter; imported lazily so headless modes never need it)
 # ============================================================================
@@ -1964,11 +2015,13 @@ def launch_gui():
         'conservative': 'Rule of thumb: cautious',
         'moderate': 'Rule of thumb: balanced',
         'aggressive': 'Rule of thumb: bold',
-        'greedy_br': 'Quick best response (greedy)',
-        'mip_br': 'Best response (optimization/MIP)',
+        'greedy_br': 'Quick best response',
+        'mip_br': 'Best response (MIP)',
         'equilibrium': 'Nash equilibrium plan',
-        'maximin': 'Safety-first plan (maximin)',
+        'maximin': 'Safety-first plan',
     }
+    # risk budgets used in the Workshop 2 results (expected incidents per turn the best-response plans accept)
+    EPS_CHOICES = ['0.02', '0.05', '0.1', '0.15', '0.25', '0.4']
     DESIGN_LABELS = {
         'D0': 'D0 Baseline',
         'D1': 'D1 Extra port in Philippines (dispersed basing)',
@@ -1984,15 +2037,23 @@ def launch_gui():
     LEVEL_NAMES = ['peace', 'tension', 'friction', 'crisis', 'brink', 'WAR']
     HELP_TEXT = (
         "WHAT IS THIS?\n"
-        "Blue (US Navy destroyers) and Red (Chinese Navy plus coast guard) move ships between "
-        "8 contested waters (circles) and their home ports (squares). Each turn is 2 days.\n\n"
+        "Blue (US, Japanese and Philippine navies and coast guards) and Red (Chinese navy and coast "
+        "guard plus North Korean navy) move ships between 8 contested waters (circles) and their home "
+        "ports (squares). Each turn is 2 days and a game is one year (180 turns). One ship on the map "
+        "stands for 3 real ships.\n\n"
         "GOAL: hold more of the contested waters than the other side without starting a war. "
         "Ships that 'assert' (thick outline) push control harder but make incidents more likely. "
         "Each incident raises the escalation level (bottom left); reaching level 5 means war "
         "and a large loss for both sides.\n\n"
-        "HOW TO USE: pick a plan for each side, the design and the weather, press New game, then "
-        "Step (one turn) or Play. 'Run many games' plays the same setup with different random "
-        "draws and reports averages.\n\n"
+        "HOW TO USE: pick a plan for each side, the design, the weather and the risk budgets, press "
+        "New game, then Step (one turn) or Play. 'Run many games' plays the same setup with different "
+        "random draws and reports averages.\n\n"
+        "RISK BUDGET: the expected number of incidents per turn a side's best-response or equilibrium "
+        "plan will accept (lower is more cautious). The rule-of-thumb plans ignore it.\n\n"
+        "STORED RESULTS: the Best response (MIP) plan solves an optimization every turn and is slow. "
+        "For the setups in the Workshop 2 results (no Red attacks, 180 turns or fewer) the GUI plays "
+        "back its recorded decisions, which gives exactly the same game, and 'Run many games' reads "
+        "the stored results instead of replaying them. Other setups run live, and the log says so.\n\n"
         "READING THE MAP: circle color and number = who controls that water, from -1 (fully Red) "
         "to +1 (fully Blue). B = Blue destroyers, P = Red navy ships, C = Red coast guard. "
         "Orange ring = incident this turn. Shaded box = rough sea or storm (no one operates in a "
@@ -2057,8 +2118,10 @@ def launch_gui():
             # --- scenario controls
             sc = ttk.LabelFrame(right, text='Scenario')
             sc.pack(fill='x')
-            self.v_blue = tk.StringVar(value=POLICY_LABELS['moderate'])
-            self.v_red = tk.StringVar(value=POLICY_LABELS['greedy_br'])
+            self.v_blue = tk.StringVar(value=POLICY_LABELS['mip_br'])
+            self.v_red = tk.StringVar(value=POLICY_LABELS['mip_br'])
+            self.v_epsB = tk.StringVar(value='0.15')
+            self.v_epsR = tk.StringVar(value='0.15')
             self.v_design = tk.StringVar(value=DESIGN_LABELS['D0'])
             self.v_weather = tk.StringVar(value=WEATHER_LABELS['nominal'])
             self.v_seed = tk.StringVar(value='0')
@@ -2073,7 +2136,14 @@ def launch_gui():
                 ttk.Label(sc, text=label).grid(row=row, column=0, sticky='w', padx=4, pady=2)
                 ttk.Combobox(sc, textvariable=var, values=vals, state='readonly', width=27).grid(row=row, column=1, columnspan=3, sticky='w', pady=2)
                 row += 1
-            ttk.Label(sc, text='Red attacks\n(Workshop 2)').grid(row=row, column=0, sticky='nw', padx=4, pady=2)
+            ttk.Label(sc, text='Risk budget').grid(row=row, column=0, sticky='w', padx=4, pady=2)
+            ef = tk.Frame(sc)
+            ef.grid(row=row, column=1, columnspan=3, sticky='w')
+            for text, var in (('Blue', self.v_epsB), ('Red', self.v_epsR)):
+                ttk.Label(ef, text=text).pack(side='left', padx=(0, 2))
+                ttk.Combobox(ef, textvariable=var, values=EPS_CHOICES, state='readonly', width=5).pack(side='left', padx=(0, 10))
+            row += 1
+            ttk.Label(sc, text='Red attacks').grid(row=row, column=0, sticky='nw', padx=4, pady=2)
             af = tk.Frame(sc)
             af.grid(row=row, column=1, columnspan=3, sticky='w')
             for k, a in enumerate(ATTACKS):
@@ -2104,7 +2174,8 @@ def launch_gui():
             self.speed.set(1150)
             self.speed.pack(side='left')
             ttk.Button(bf, text='Help', command=self.show_help).pack(side='left', padx=(8, 2))
-            ttk.Label(rc, text="Pick plans and settings above, press New game, then Step or Play.",
+            ttk.Label(rc, text="Pick plans and settings above, press New game, then Step or Play.\n"
+                               "Setups from the Workshop 2 results play back stored games.",
                       foreground='#445').pack(fill='x', padx=6, pady=(0, 3))
             # --- event log
             lf = ttk.LabelFrame(right, text='What happened')
@@ -2120,18 +2191,18 @@ def launch_gui():
             hf = tk.Frame(bt)
             hf.pack(fill='x', padx=4, pady=2)
             ttk.Label(hf, text='Games').pack(side='left')
-            self.v_nseeds = tk.StringVar(value='50')
+            self.v_nseeds = tk.StringVar(value='200')
             ttk.Entry(hf, textvariable=self.v_nseeds, width=6).pack(side='left', padx=4)
             self.batch_btn = ttk.Button(hf, text='Run many games', command=self.run_batch_gui)
             self.batch_btn.pack(side='left', padx=4)
             self.batch_out = tk.Text(bt, height=8, width=46, font=('TkFixedFont', 9), state='disabled', wrap='none')
             self.batch_out.pack(fill='both', expand=True)
-            self._set_batch_text("Plays the current settings many times with different random seeds\nand reports average scores and how often war breaks out.")
+            self._set_batch_text("Plays the current settings many times with different random seeds\nand reports average scores and how often war breaks out.\nGames in the Workshop 2 results (seeds 0-199, no Red attacks,\n180 turns) are read from the stored results, not replayed.")
 
         # ------------------------------------------------------------ control
         def _settings(self):
             try:
-                seed = int(self.v_seed.get())
+                seed = max(0, int(self.v_seed.get()))
             except ValueError:
                 seed = 0
             try:
@@ -2144,21 +2215,35 @@ def launch_gui():
                 return next(k for k, v in labels.items() if v == var.get())
             return dict(blue=key(POLICY_LABELS, self.v_blue), red=key(POLICY_LABELS, self.v_red),
                         design=key(DESIGN_LABELS, self.v_design), attacks=attacks, seed=seed, T=T,
-                        weather=key(WEATHER_LABELS, self.v_weather))
+                        weather=key(WEATHER_LABELS, self.v_weather),
+                        epsB=float(self.v_epsB.get()), epsR=float(self.v_epsR.get()))
+
+        @staticmethod
+        def _new_game(s, seed):
+            return Game(s['blue'], s['red'], s['design'], s['attacks'], seed=seed, T=s['T'], weather=s['weather'],
+                        params={'eps': {'B': s['epsB'], 'R': s['epsR']}})
 
         def reset(self):
             self.running = False
             self.run_btn.configure(text='Play')
             s = self._settings()
-            self.game = Game(s['blue'], s['red'], s['design'], s['attacks'], seed=s['seed'], T=s['T'],
-                             weather=s['weather'])
+            self.game = self._new_game(s, s['seed'])
+            replay = use_replay(self.game)
             self.n_events_shown = 0
             self.log.configure(state='normal')
             self.log.delete('1.0', 'end')
             self.log.configure(state='disabled')
             self.append_log(f"New game: Blue plays '{POLICY_LABELS[s['blue']]}', Red plays '{POLICY_LABELS[s['red']]}', "
                             f"{DESIGN_LABELS[s['design']]}, {WEATHER_LABELS[s['weather']]}, "
+                            f"risk budgets Blue {s['epsB']:g} Red {s['epsR']:g}, "
                             f"Red attacks: {', '.join(s['attacks']) or 'none'}, seed {s['seed']}, {s['T']} turns")
+            if replay:
+                self.append_log("Playing back the stored Best response (MIP) decisions for this setup and seed "
+                                "(the same game as in the results).")
+            elif replay is False:
+                self.append_log("WARNING: no stored game for this setup and seed, so Best response (MIP) runs live. "
+                                "Expect several seconds per turn. Stored games: no Red attacks, 180 turns or fewer, "
+                                "seeds 0-4 of the setups in the Workshop 2 results.")
             self.redraw()
 
         def step_once(self):
@@ -2196,39 +2281,74 @@ def launch_gui():
             self.log.configure(state='disabled')
 
         def run_batch_gui(self):
-            """Run N seeds of the current scenario in chunks so the window stays responsive."""
+            """Summarize N seeds of the current setup.  Games already in the Workshop 2 results are read
+            from results_w2/games; only the missing ones are played, in a background thread so the
+            window stays responsive.  Pressing the button again stops the live games."""
             if self.batch_job:
+                self.batch_stop = True
                 return
             s = self._settings()
             try:
                 n = max(1, int(self.v_nseeds.get()))
             except ValueError:
-                n = 50
-            rows = []
-            self.batch_btn.configure(state='disabled')
-
-            def chunk(k=0):
-                for j in range(k, min(n, k + 5)):
-                    rows.append(Game(s['blue'], s['red'], s['design'], s['attacks'], seed=s['seed'] + j, T=s['T'],
-                                     weather=s['weather']).run().metrics())
-                k = min(n, k + 5)
-                self._set_batch_text(f"running... {k}/{n}")
-                if k < n:
-                    self.batch_job = self.root.after(1, chunk, k)
+                n = 200
+            seeds = range(s['seed'], s['seed'] + n)
+            store = stored_games() if not s['attacks'] and s['T'] == PARAMS['T'] else {}
+            rows, missing = [], []
+            for sd in seeds:
+                r = store.get(stored_key(s['blue'], s['red'], s['design'], s['weather'], s['epsB'], s['epsR'], sd))
+                if r is None:
+                    missing.append(sd)
                 else:
-                    self.batch_job = None
-                    self.batch_btn.configure(state='normal')
-                    sm = summarize(rows, s['blue'], s['red'], s['design'], s['attacks'])
-                    self._set_batch_text(
-                        f"{n} games: Blue '{POLICY_LABELS[s['blue']]}' vs Red '{POLICY_LABELS[s['red']]}'\n"
-                        f"{DESIGN_LABELS[s['design']]}, {WEATHER_LABELS[s['weather']]}\n\n"
-                        f"Average Blue score  {sm['blue_mean']:8.1f}  (+/- {sm['blue_se']:.1f})\n"
-                        f"Average Red score   {sm['red_mean']:8.1f}  (+/- {sm['red_se']:.1f})\n"
-                        f"Blue control share  {sm['control_share']:+.2f}  (-1 all Red, +1 all Blue)\n"
-                        f"Games ending in war {100 * sm['war_rate']:.0f}%\n"
-                        f"Incidents per game  {sm['incidents']:.1f}\n"
-                        f"(+/- = standard error of the average)")
-            chunk()
+                    rows.append(r)
+            n_stored = len(rows)
+            slow = 'mip_br' in (s['blue'], s['red'])
+            self.batch_stop = False
+
+            def play():
+                for sd in missing:
+                    if self.batch_stop:
+                        return
+                    gm = self._new_game(s, sd)
+                    use_replay(gm)
+                    rows.append(gm.run().metrics())
+
+            def poll():
+                live = len(rows) - n_stored
+                if self.batch_thread.is_alive():
+                    note = ("\nBest response (MIP) runs live here: minutes per game. Press Stop to end early."
+                            if slow else "")
+                    self._set_batch_text(f"{n_stored} games read from the stored results.\n"
+                                         f"Playing the other {len(missing)} live... {live}/{len(missing)}{note}")
+                    self.batch_job = self.root.after(300, poll)
+                    return
+                self.batch_job = None
+                self.batch_btn.configure(text='Run many games')
+                if not rows:
+                    self._set_batch_text("Stopped before any game finished.")
+                    return
+                sm = summarize(rows, s['blue'], s['red'], s['design'], s['attacks'])
+                source = (f"{n_stored} from the stored results, {live} played live" if live else
+                          "all from the stored results") if n_stored else "all played live"
+                stopped = f" (stopped early: {len(rows)} of {n})" if len(rows) < n else ""
+                self._set_batch_text(
+                    f"{len(rows)} games{stopped}: Blue '{POLICY_LABELS[s['blue']]}' vs Red '{POLICY_LABELS[s['red']]}'\n"
+                    f"{DESIGN_LABELS[s['design']]}, {WEATHER_LABELS[s['weather']]}, "
+                    f"risk budgets {s['epsB']:g}/{s['epsR']:g}\n"
+                    f"Seeds {s['seed']}-{s['seed'] + n - 1}, {source}\n\n"
+                    f"Average Blue score  {sm['blue_mean']:8.1f}  (+/- {sm['blue_se']:.1f})\n"
+                    f"Average Red score   {sm['red_mean']:8.1f}  (+/- {sm['red_se']:.1f})\n"
+                    f"Blue control share  {sm['control_share']:+.2f}  (-1 all Red, +1 all Blue)\n"
+                    f"Games ending in war {100 * sm['war_rate']:.0f}%\n"
+                    f"Incidents per game  {sm['incidents']:.1f}\n"
+                    f"(+/- = standard error of the average)")
+
+            import threading
+            self.batch_thread = threading.Thread(target=play, daemon=True)
+            self.batch_thread.start()
+            if missing:
+                self.batch_btn.configure(text='Stop')
+            self.batch_job = self.root.after(1, poll)
 
         def _set_batch_text(self, text):
             self.batch_out.configure(state='normal')

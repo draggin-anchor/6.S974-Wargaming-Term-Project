@@ -38,21 +38,28 @@ Outputs go to `results/` (CSV and markdown tables) and `results/figures/`.
 
 `python3 wargame_gui.py` opens the game. Press **Help** for a one-screen explanation.
 
-1. On the right, pick a plan for each side, Blue's design, and the weather (plain-language names; the
-   command-line names are in brackets below), then press **New game**.
+1. On the right, pick a plan for each side, Blue's design, the weather and each side's risk budget
+   (plain-language names; the command-line names are in brackets below), then press **New game**.
 2. **Step** plays one turn (2 days); **Play** animates the game; **Run many games** plays the same settings
    over many random seeds and reports average scores and how often the game ends in war.
 3. Map: circle color and number = who controls each contested water (-1 fully Red, +1 fully Blue);
-   B = Blue destroyers, P = Red navy, C = Red coast guard; thick outline = that side is asserting;
+   B = Blue navy, G = Blue coast guard, P = Red navy, C = Red coast guard; thick outline = that side is asserting;
    orange ring = incident; grey box = storm, light box = rough sea. **Blue view** / **Red view** show what each
    side believes about the other's ships (`~n[a]` = n ships last seen a turns ago).
 4. Bottom left: the escalation ladder (0 peace to 5 war) and the history of Blue control and escalation.
 
 Plan names: Random moves (`random`), Rule of thumb: cautious / balanced / bold (`conservative` / `moderate` /
-`aggressive`), Quick best response (`greedy_br`), Best response (`mip_br`), Nash equilibrium plan
+`aggressive`), Quick best response (`greedy_br`), Best response (MIP) (`mip_br`), Nash equilibrium plan
 (`equilibrium`), Safety-first plan (`maximin`). Designs: D0 Baseline, D1 Extra port in Philippines (dispersed basing),
 D2 Extra surveillance (redundant sensing), D3 De-escalation measures. Weather: Calm seas, Nominal weather, Typhoon weather, Extreme weather
 (`calm`, `nominal`, `typhoon`, `extreme`).
+
+Stored results. Best response (MIP) solves an optimization every turn, so live games are slow. MIP-BR draws no
+random numbers, so its recorded decisions replay the same game exactly. **New game** plays back the recording in
+`results_w2/replays/` when one exists for the setup and seed (no Red attacks and at most 180 turns). Recordings cover seeds 0-4 of every
+setup with an MIP-BR side and are made with `python3 experiments.py recorder` (see `cluster/README.md`). Otherwise the log
+warns that MIP-BR runs live. **Run many games** reads every game already in `results_w2/games/*.csv` (seeds 0-199 of
+the Workshop 2 setups) and plays only the missing ones live, in the background. Press **Stop** to end early.
 
 ## Where things are in `wargame_gui.py`
 
