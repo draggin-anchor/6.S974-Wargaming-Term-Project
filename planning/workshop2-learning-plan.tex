@@ -1,0 +1,198 @@
+\documentclass[10pt]{article}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{mathptmx}
+\DeclareMathAlphabet{\mathcal}{OMS}{cmsy}{m}{n}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{titlesec}
+\setlist{nosep,leftmargin=*}
+\titlespacing*{\section}{0pt}{8pt}{3pt}
+\titlespacing*{\subsection}{0pt}{5pt}{2pt}
+\setlength{\parskip}{3pt}
+\setlength{\parindent}{0pt}
+\newcommand{\B}{\mathsf{B}}
+\newcommand{\Rd}{\mathsf{R}}
+\newcommand{\As}{\mathrm{A}}
+\newcommand{\Pt}{\mathrm{P}}
+\newcommand{\1}{\mathbf{1}}
+
+\title{\vspace{-2.5em}\textbf{Workshop 2 plan: Bayesian beliefs and a multi-period best response}\\[2pt]
+\large Proposal for Sean, Nov 1, 2026 (nothing built yet)}
+\date{\vspace{-3em}}
+
+\begin{document}
+\maketitle
+
+\section*{Summary}
+\begin{enumerate}
+\item \textbf{Bayesian beliefs.} Blue does not know how often Red asserts when Blue ships are present. It holds a
+Beta prior on Red's assertion rate in each region and updates it with Bayes' rule each period. It sees Red's
+posture only in zones where it has ships, so it learns only where it goes. That is exactly the setting from class
+where a Bayesian decision maker can get stuck on a wrong belief forever (a self-confirming equilibrium). We compare
+four ways to choose under the belief (myopic, a committed presence patrol, Thompson sampling, an optimistic bound) and
+measure each by regret against a Blue that knows Red's true rates.
+\item \textbf{Multi-period best response.} Today's MIP-BR plans one period ahead and only considers staying, going
+home, or moving one edge. The new version plans $H$ periods ahead on a time-expanded copy of the map, carries out
+the first period, and solves again next period. It lets Blue position ships for zones two or more moves away and
+plan around endurance.
+\item Both use only methods from class. Bayes' rule with a Beta prior, self-confirming equilibrium, committed
+experiments, Thompson sampling, optimism and regret come from the learning material. Types and posterior beliefs
+come from incomplete-information games. Discounting comes from dynamic games, and the time-expanded flows are the
+network-flow MIP from the optimization material.
+\end{enumerate}
+
+\section{Bayesian beliefs about Red's behavior}
+
+\subsection{What Blue does not know, and what it sees}
+Red's \emph{type} is its assertion rate in each region $r\in\{N,C,S\}$,
+\[
+\theta_r=\Pr(\text{Red asserts at a zone in region } r \mid \text{Blue ships are present there}),\qquad
+\theta=(\theta_N,\theta_C,\theta_S)\in[0,1]^3 .
+\]
+Red knows $\theta$. Blue does not. Blue's prior is $\mu_0(\theta_r)=\mathrm{Beta}(\alpha_r,\beta_r)$, independent
+across regions.
+
+\textbf{One model change is needed.} Today a detection at $v$ (own ships, adjacent ships, or satellite) also
+reveals Red's posture at $v$. I propose that counts can still be seen from a distance, but posture (whether Red is
+shouldering, shadowing or warning) is seen only where Blue has ships, which matches the fog-of-war rule
+``only forces present where they also maintain forces''. This is the feedback constraint from class. Blue sees the
+outcome only of the zones it chooses to go to, and nothing about the zones it stays out of.
+
+\subsection{Bayes update}
+In period $t$, let $k_{r,t}$ be the number of Blue-occupied zones in region $r$ where Blue saw Red assert, and
+$m_{r,t}$ the number where it saw Red patrol. Then
+\[
+\mu_{t+1}(\theta_r)=\mathrm{Beta}\Big(\alpha_r+\textstyle\sum_{s\le t}k_{r,s},\ \beta_r+\sum_{s\le t}m_{r,s}\Big),
+\qquad
+\hat q_{r,t}=\frac{\alpha_r+\sum_{s\le t}k_{r,s}}{\alpha_r+\beta_r+\sum_{s\le t}(k_{r,s}+m_{r,s})}.
+\]
+A region Blue stays out of adds nothing, so its posterior does not move.
+
+\subsection{How the belief enters the best response}
+Today the option values $a_v(n,c,p)$ and risks $\rho_v(n,c,p)$ assume Red's last-seen posture at $v$ (patrol if
+never seen). With a belief they become an expectation over Red's two postures, with $q$ the rate the choice rule
+uses in region $r(v)$:
+\[
+\bar a_v(n,c,p)=(1-q)\,a_v(n,c,p\mid \Pt)+q\,a_v(n,c,p\mid \As),\qquad
+\bar\rho_v(n,c,p)=(1-q)\,\rho_v(n,c,p\mid \Pt)+q\,\rho_v(n,c,p\mid \As).
+\]
+These are computed before the solve, so the MIP keeps exactly its current form and size.
+
+\subsection{Four choice rules}
+\begin{center}\small
+\begin{tabular}{lll}
+\toprule
+Rule & Rate $q$ used for region $r$ in period $t$ & What it does\\\midrule
+Myopic & $\hat q_{r,t}$ (posterior mean) & acts on the current belief, never explores on purpose\\
+Committed presence patrol & $\hat q_{r,t}$, plus at least one ship in every region for the first $N_e$ periods & a fixed experiment, then myopic\\
+Thompson sampling & a fresh draw $\tilde\theta_{r,t}\sim\mu_t(\theta_r)$ & explores in proportion to what it does not yet know\\
+Optimistic bound & $\max\!\big\{0,\ h_r/n_r-\sqrt{2\ln t/n_r}\big\}$ & judges each region by the lowest rate not yet ruled out\\
+Oracle (benchmark) & the true $\theta_r$ & the full-information best response\\
+\bottomrule
+\end{tabular}\end{center}
+$h_r$ and $n_r$ are the assertions seen and zone-periods observed in region $r$ so far. For Blue a low assertion
+rate is good news, so optimism subtracts the bonus. The committed patrol is a realistic option for the US side
+(a scheduled presence operation regardless of what Red does). Thompson draws use their own random stream, so games
+stay on common random numbers.
+
+\subsection{The trap in this game}
+If Blue starts pessimistic about a region (for example South with prior mean $0.8$), the expected value of
+going there is low and the expected risk is high, so the myopic MIP keeps Blue out. Blue then sees nothing in the
+South, its belief never moves, and Red holds the South for the rest of the year. Nothing Blue observes contradicts
+its belief, so this is a self-confirming equilibrium. Blue is optimal given its prediction, and its predictions are
+right everywhere it actually goes. The questions are how often the myopic rule gets trapped, how much each other
+rule pays to avoid it, and whether design D2 (extra surveillance) breaks the trap by reporting Red's posture in zones
+next to Blue ships. That is the ``reports from other ships'' counter from class. It also gives D2 a concrete reason
+to matter, since it showed no benefit so far.
+
+\subsection{Regret}
+For a fixed true $\theta$, regret over the year is
+\[
+R_T(\theta)=\mathbb E\Big[\sum_{t=1}^{T}\big(J^\theta_t(x^\star_t)-J^\theta_t(x_t)\big)\Big],\qquad T=180,
+\]
+where $J^\theta_t$ is the MIP objective at the period-$t$ state with option values computed from the true $\theta$,
+$x_t$ is the learner's plan, and $x^\star_t$ is the oracle's plan for the same state. Each Blue decision needs one
+extra solve (the oracle's), the same check we ran for greedy against the MIP. We also report the game-level gap
+$u_\B(\text{oracle})-u_\B(\text{learner})$ on the same seeds.
+
+\subsection{Which Red Blue learns against}
+\begin{itemize}
+\item \textbf{Correctly specified.} Red moves its ships with MIP-BR, but where Blue is present it asserts with
+probability $\theta_r$ each period. Blue's model contains the truth, so a learner that keeps exploring should reach
+it. Two type profiles, for example $\theta=(0.2,0.5,0.8)$ and $(0.8,0.5,0.2)$.
+\item \textbf{Misspecified.} Red is the normal MIP-BR, whose posture depends on the state and on Blue. No single
+$\theta$ describes it, so we report where Blue's beliefs settle and what that costs, which is the ``wrong model''
+failure from class.
+\end{itemize}
+Red learning about Blue at the same time would make each side's environment change as the other learns. Class has
+not covered learning by two sides yet, so I would leave that out unless it is taught before Dec 1.
+
+\subsection{Optional second piece: where unseen ships are}
+Old sightings still count fully today. A Bayes-consistent fix: if each Red ship leaves its node with probability $m$
+per period, a sighting of age $a$ is still right with probability $(1-m)^a$. The believed count blends the last
+sighting with the unseen ships spread over the zones, with weight $(1-m)^a$. From the Workshop 1 runs $m\approx0.4$.
+This is small and makes D2's fresher sightings worth something. I would add it only if time allows after the above.
+
+\section{Multi-period best response}
+
+\subsection{Why}
+The one-period MIP only looks at staying, going home, or moving one edge. A zone two or more moves away has no
+value to it until a ship happens to be next to it, it cannot plan a two-step move into the South, and it does not
+see that a ship sent out now will have to turn back for fuel in three periods. These are the effects the grader is
+most likely to question (``one-period lookahead'').
+
+\subsection{Formulation}
+Make $H$ copies of the 17-node map, one per period $\tau=1,\dots,H$. Each ship type moves along the edges of this
+time-expanded graph (stay, or one edge per period), which is a min-cost flow over time with integer flows. Let
+$n_{v,\tau}$ and $c_{v,\tau}$ be the navy and coast guard levels at zone $v$ in period $\tau$, and $p_{v,\tau}$ the
+planned posture. Then
+\[
+\max\ \sum_{\tau=1}^{H}\delta^{\tau-1}\Big(\sum_{v}\bar a_v(n_{v,\tau},c_{v,\tau},p_{v,\tau})-\gamma\,M_\tau\Big)
+\quad\text{s.t.}\quad
+M_\tau\le F_i,\qquad \sum_v\bar\rho_v(n_{v,\tau},c_{v,\tau},p_{v,\tau})\le\varepsilon_i\Big(1-\frac{\ell}{L}\Big)+\xi_\tau
+\ \ \text{for each }\tau,
+\]
+plus flow conservation, endurance (a ship must stay within reach of a port or the oiler at every step), and the same
+level and option constraints as today in every period. $M_\tau$ counts the moves in period $\tau$. Blue carries out
+period 1 only and solves again next period with new observations.
+
+\textbf{What it assumes.} Over the $H$ periods Red's ships and posture are held at Blue's current belief (with the
+decay above, if used). It does not model Red reacting to Blue's plan inside the lookahead, so it is still a best
+response to a forecast, not a solution of the dynamic game. Holding the belief fixed also means the lookahead never
+values a move for what it would teach Blue, so exploration still has to come from the choice rule. Whether looking
+ahead can do that job is the next part of the learning material.
+
+\subsection{Cost}
+The one-period MIP has at most 339 variables (measured over a 20-period MIP-BR game). With $H$ periods it grows
+roughly $H$ times, so $H=2$ fits the size-limited license and $H=3$ may not. Sean's academic license, or a Gurobi
+module on Engaging if one exists (\texttt{module avail gurobi}), removes the limit. Solve time grows faster than
+size, so I would measure $H=2$ and $H=3$ on a few games before picking.
+
+\section{Experiments and timing}
+\begin{center}\small
+\begin{tabular}{lll}
+\toprule
+Block & Setups & Games (200 seeds each)\\\midrule
+L1 learning, correct model & 4 rules $\times$ 2 priors $\times$ 2 Red types, plus oracle & 3{,}600\\
+L2 learning, misspecified & 4 rules against MIP-BR Red & 800\\
+L3 trap and D2 & myopic, pessimistic prior, D0 and D2 & 400\\
+M1 lookahead & $H\in\{2,3\}$ Blue against rule-based, MIP-BR, equilibrium Red & 1{,}200\\
+\bottomrule
+\end{tabular}\end{center}
+About 6{,}000 new games, run on Engaging the same way as the suite (one overnight). Learning games cost about one
+extra solve per Blue decision. Lookahead games cost more per solve.
+
+\textbf{Order.} Beliefs, the four rules and regret by Nov 10, then a short local test and the Engaging run before the
+Nov 17 learning checkpoint. Multi-period MIP by Nov 24, then its runs. Writeup and slides after Dec 1, with QA.
+
+\section*{Decisions for Sean}
+\begin{enumerate}
+\item Posture seen only where Blue has ships (counts still seen from a distance)?
+\item Learn per region (3 rates, faster learning) or per zone (8 rates)?
+\item Blue learns, Red has a fixed type. Or should Red also learn?
+\item Lookahead $H=2$ or $H=3$, and is it worth asking ORCD about a Gurobi license on Engaging?
+\item Include the optional unseen-ships belief?
+\end{enumerate}
+\end{document}
