@@ -48,8 +48,10 @@ imported lazily and is needed only for 'mip_br', 'maximin' and the LP parts of
 
 import argparse
 import csv
+import gzip
 import json
 import math
+import os
 import random
 import statistics
 import sys
@@ -1843,6 +1845,65 @@ def make_policy(name, player, game):
     if name == 'maximin':
         return MaximinPolicy(player, rng)
     raise ValueError(f"unknown policy {name!r}; choose from {POLICY_NAMES}")
+
+
+# ----------------------------------------------------------------------------
+# Recorded MIP-BR decisions.  MIP-BR draws no random numbers, so replaying its recorded
+# decisions reproduces the game exactly: the other side, the incidents and the weather still
+# run live on the same random streams.  The GUI uses recordings so MIP-BR games play at full speed.
+# ----------------------------------------------------------------------------
+REPLAYS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results_w2', 'replays')
+
+
+def replay_path(blue, red, design, weather, epsB, epsR, seed):
+    return os.path.join(REPLAYS, f"{blue}_{red}_{design}_{weather}_{float(epsB):g}_{float(epsR):g}_{int(seed)}.json.gz")
+
+
+class RecordingPolicy(Policy):
+    """Wraps a policy and keeps every decision it makes: {t: [[ship id, node], ...], {zone: posture}}."""
+
+    def __init__(self, inner):
+        super().__init__(inner.player, inner.rng)
+        self.inner, self.name, self.log = inner, inner.name, {}
+
+    def act(self, obs):
+        moves, post = self.inner.act(obs)
+        self.log[obs.t] = [sorted([sid, w] for sid, w in moves.items()), dict(post)]
+        return moves, post
+
+
+class ReplayPolicy(Policy):
+    """Plays back a recording made by RecordingPolicy."""
+
+    def __init__(self, player, rng, decisions, name='mip_br'):
+        super().__init__(player, rng)
+        self.decisions, self.name = decisions, name
+
+    def act(self, obs):
+        moves, post = self.decisions[obs.t]
+        return {sid: w for sid, w in moves}, dict(post)
+
+
+def save_replay(game, path):
+    rec = {i: {str(t): d for t, d in pol.log.items()} for i, pol in game.policy.items()
+           if isinstance(pol, RecordingPolicy)}
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with gzip.open(path, 'wt') as f:
+        json.dump(rec, f, separators=(',', ':'))
+
+
+def load_replay(path):
+    """{side: {t: (moves, post)}} from a recording, or None if there is none."""
+    if not os.path.exists(path):
+        return None
+    with gzip.open(path, 'rt') as f:
+        rec = json.load(f)
+    return {i: {int(t): d for t, d in dec.items()} for i, dec in rec.items()}
+
+
+def attach_replay(game, rec):
+    for i, decisions in rec.items():
+        game.policy[i] = ReplayPolicy(i, game.rng, decisions, game.policy_names[i])
 
 
 # ============================================================================

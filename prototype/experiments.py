@@ -615,22 +615,17 @@ def game_list(names=('frontier', 'riskgame', 'policies', 'weather', 'designs')):
     return first + rest
 
 
-def worker(stale_hours=3.0):
-    """Cluster job: play the suite's games in order, one at a time, until none is left.
-
-    Any number of workers can run at once (on any partition).  A worker claims a game by creating
-    GAMES/claims/<game>.claim (atomic), so no game is played twice.  A claim older than stale_hours
-    without a stored result (its job was stopped) is taken over."""
-    import socket
+def _claim_loop(items, done, play, stale_hours):
+    """Play every item not yet done, one at a time.  Any number of these loops can run at once
+    (for example as cluster jobs on several partitions): an item is claimed by creating
+    GAMES/claims/<item>.claim (atomic), so none is played twice.  A claim older than stale_hours
+    whose item is still not done (its job was stopped) is taken over."""
     claims = os.path.join(GAMES, 'claims')
     os.makedirs(claims, exist_ok=True)
-    out = os.path.join(GAMES, f'{socket.gethostname()}_{os.getpid()}.csv')
-    games = game_list()
     while True:
-        store = load_games()
         todo = None
-        for i, g in enumerate(games):
-            if _key(*g) in store:
+        for i, g in enumerate(items):
+            if done(g):
                 continue
             path = os.path.join(claims, '_'.join(map(str, g)) + '.claim')
             try:
@@ -642,12 +637,58 @@ def worker(stale_hours=3.0):
             todo = (i, g)
             break
         if todo is None:
-            print('no games left', flush=True)
+            print('nothing left', flush=True)
             return
         i, g = todo
         t0 = time.time()
+        print(f"{i}: {g} {play(g)} in {time.time() - t0:.0f}s", flush=True)
+
+
+def worker(stale_hours=3.0):
+    """Cluster job: play the suite's games in order (headline setups first) until none is left."""
+    import socket
+    out = os.path.join(GAMES, f'{socket.gethostname()}_{os.getpid()}.csv')
+    store = {}
+
+    def done(g):
+        if _key(*g) not in store:
+            store.update(load_games())
+        return _key(*g) in store
+
+    def play(g):
         m = play_game(*g, out)
-        print(f"game {i}: {g} u_B {m['blue_payoff']:.1f} war {m['war']:.0f} in {time.time() - t0:.0f}s", flush=True)
+        return f"u_B {m['blue_payoff']:.1f} war {m['war']:.0f}"
+    _claim_loop(game_list(), done, play, stale_hours)
+
+
+REPLAY_SEEDS = int(os.environ.get('REPLAY_SEEDS', 5))
+
+
+def replay_list():
+    """The first REPLAY_SEEDS games of every suite setup with an MIP-BR side (recorded for the GUI)."""
+    configs = dict.fromkeys(g[:-1] for g in game_list() if 'mip_br' in g[:2])
+    return [c + ('replay', sd) for sd in range(REPLAY_SEEDS) for c in configs]
+
+
+def recorder(stale_hours=3.0):
+    """Cluster job: replay the suite's MIP-BR games and record MIP-BR's decisions for the GUI."""
+    store = load_games()
+
+    def path(g):
+        return wg.replay_path(*g[:6], g[7])
+
+    def play(g):
+        blue, red, design, weather, epsB, epsR, _, seed = g
+        gm = wg.Game(blue, red, design, (), seed=seed, weather=weather, params={'eps': {'B': epsB, 'R': epsR}})
+        for i in 'BR':
+            if gm.policy_names[i] == 'mip_br':
+                gm.policy[i] = wg.RecordingPolicy(gm.policy[i])
+        m = gm.run().metrics()
+        wg.save_replay(gm, path(g))
+        ref = store.get(_key(*g[:6], seed))
+        same = ref is not None and abs(ref['blue_payoff'] - m['blue_payoff']) < 1e-6
+        return f"u_B {m['blue_payoff']:.1f} {'matches the stored game' if same else 'DIFFERS from the stored game'}"
+    _claim_loop(replay_list(), lambda g: os.path.exists(path(g)), play, stale_hours)
 
 
 def plan():
@@ -657,13 +698,15 @@ def plan():
     first = sum(1 for g in games if g[-1] < HEADLINE_SEEDS and headline(('',) + g[:-1]))
     mip = sum(1 for g in games if 'mip_br' in g[:2])
     print(f"{len(games)} games ({first} headline, {mip} with MIP-BR), {sum(_key(*g) in store for g in games)} stored")
+    reps = replay_list()
+    print(f"{len(reps)} GUI recordings, {sum(os.path.exists(wg.replay_path(*g[:6], g[7])) for g in reps)} done")
 
 if __name__ == '__main__':
     which = sys.argv[1:] or ['all']
     if which == ['all']:
         which = ALL
-    if which[0] == 'worker':
-        worker(*map(float, which[1:2]))
+    if which[0] in ('worker', 'recorder'):
+        globals()[which[0]](*map(float, which[1:2]))
         sys.exit()
     for name in which:
         globals()[name]()
