@@ -2136,8 +2136,8 @@ def launch_gui():
             # --- scenario controls
             sc = ttk.LabelFrame(right, text='Scenario')
             sc.pack(fill='x')
-            self.v_blue = tk.StringVar(value=POLICY_LABELS['mip_br'])
-            self.v_red = tk.StringVar(value=POLICY_LABELS['mip_br'])
+            self.v_blue = tk.StringVar(value=POLICY_LABELS['moderate'])
+            self.v_red = tk.StringVar(value=POLICY_LABELS['moderate'])
             self.v_epsB = tk.StringVar(value='0.15')
             self.v_epsR = tk.StringVar(value='0.15')
             self.v_design = tk.StringVar(value=DESIGN_LABELS['D0'])
