@@ -87,6 +87,9 @@ PARAMS = {
     'eps': {'B': 0.15, 'R': 0.15},
     # detection probabilities q_{i,v}
     'q_own': 0.95, 'q_adj': 0.6, 'q_sat': 0.2,
+    # Workshop 2 learning runs: opponent posture is seen only on scene (own ships in the zone,
+    # or next to it under D2), and satellite detection rises to 0.25 (learning.LEARN_PARAMS)
+    'posture_on_scene': False,
     # design (resilient redesign) nominal-efficiency cost charged to Blue per period
     'design_cost': {'D0': 0.0, 'D1': 0.3, 'D2': 0.5, 'D3': 0.0},
     # attacks (implemented for Workshop 2; not used in the Workshop 1 results)
@@ -456,6 +459,7 @@ class Obs:
         self.free = [s for s in self.ships if s.id not in forced]
         self.belief = {v: dict(b) for v, b in game.belief[player].items()}
         self.seen_posture = dict(game.seen_posture[player])
+        self.scene_obs = list(game.scene_obs[player])
         self.closed = set(game.closed)
         self.sea = dict(game.sea)                       # public sea state per region
         self.blocked = set(game.blocked) if player == 'B' else set()
@@ -550,6 +554,7 @@ class Game:
         # beliefs: last-seen opponent counts per node (public at t=0)
         self.belief = {i: {} for i in 'BR'}
         self.seen_posture = {i: {} for i in 'BR'}
+        self.scene_obs = {i: [] for i in 'BR'}     # this period's on-scene posture sightings (v, posture)
         counts = self.counts()
         for i in 'BR':
             for v in self.g.nodes:
@@ -676,13 +681,21 @@ class Game:
         """Update player i's belief about opponent ships (step 1 of the period)."""
         counts = self.counts()
         opp = OPP[i]
+        on_scene = self.P.get('posture_on_scene', False)
+        own_nodes = {s.loc for s in self.ships if s.owner == i}
+        self.scene_obs[i] = []
         for v in self.g.nodes:
             if self.g.is_home(i, v):
                 continue
             if self.rng.random() < self.detect_prob(i, v):
                 self.belief[i][v] = {k: counts[v][k] for k in KINDS[opp]}
                 self.belief[i][v]['age'] = 0
-                self.seen_posture[i][v] = self.postures[opp].get(v, 'P') if v in REGION_OF else 'P'
+                # posture: seen on any detection, or (learning runs) only on scene
+                near = v in own_nodes or (i == 'B' and self.design == 'D2' and any(n in own_nodes for n in self.g.adj[v]))
+                if not on_scene or near:
+                    self.seen_posture[i][v] = self.postures[opp].get(v, 'P') if v in REGION_OF else 'P'
+                    if on_scene and v in REGION_OF and sum(counts[v][k] for k in KINDS[opp]) > 0:
+                        self.scene_obs[i].append((v, self.postures[opp].get(v, 'P')))
             else:
                 self.belief[i][v]['age'] += 1
         if i == 'B' and 'deception' in self.attacks:
@@ -1844,6 +1857,9 @@ def make_policy(name, player, game):
         return EquilibriumPolicy(player, rng)
     if name == 'maximin':
         return MaximinPolicy(player, rng)
+    if name.startswith('learn'):
+        import learning                             # Workshop 2 learning policies (learning.py)
+        return learning.make_learner(name, player, game)
     raise ValueError(f"unknown policy {name!r}; choose from {POLICY_NAMES}")
 
 
