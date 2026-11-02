@@ -48,20 +48,19 @@ def blocks():
     # L2: misspecified, posture chosen by the MIP
     for r in RULES:
         out.append((r, r, 1, 'flat', 'R_south', 'mip', 'D0'))
-    # M1: 3-period lookahead
-    for b, r in (('thompson', 'thompson'), ('oracle', 'oracle')):
-        for rtype in ('R_south', 'R_north'):
-            out.append((b, r, 3, 'flat', rtype, 'typed', 'D0'))
+    # M1 (3-period lookahead) is added once its design is settled.  Exact 3-period solves take
+    # minutes each (Nov 2 cloud timing: Blue 73 s on turn 1 and over 10 min on turn 4)
     return out
 
 
 def game_params(blue, red, H, prior, rtype, mode, design):
+    """H is Blue's planning horizon.  Red always plans one period ahead."""
     P = dict(L.LEARN_PARAMS)
     typed = mode == 'typed'
     P['learn'] = {
         'B': {'H': H, 'prior': prior, 'type': 'B_base' if typed else None, 'opp_type': rtype if typed else None,
               'regret': typed},
-        'R': {'H': H, 'prior': 'flat', 'type': rtype if typed else None, 'opp_type': 'B_base' if typed else None,
+        'R': {'H': 1, 'prior': 'flat', 'type': rtype if typed else None, 'opp_type': 'B_base' if typed else None,
               'regret': typed},
     }
     return P
@@ -69,8 +68,9 @@ def game_params(blue, red, H, prior, rtype, mode, design):
 
 def play(cfg, seed, out_file):
     blue, red, H, prior, rtype, mode, design = cfg
+    T = int(os.environ.get('LEARN_T', 0)) or None          # shorter games for local tests only
     g = W.Game(f'learn_{blue}', f'learn_{red}', design, (), seed=seed, weather='nominal',
-               params=game_params(*cfg)).run()
+               params=game_params(*cfg), T=T).run()
     m = g.metrics()
     row = {c: m.get(c) for c in ('blue_payoff', 'red_payoff', 'control_share', 'war', 'incidents')}
     for i in 'BR':

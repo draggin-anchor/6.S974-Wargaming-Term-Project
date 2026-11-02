@@ -19,9 +19,11 @@ Setup (planning/workshop2-learning-plan.tex, decisions of Nov 2, 2026):
       oracle      the opponent's true theta (benchmark for regret)
 * The MIP option values and risks are the expectation over the opponent's posture,
   (1 - q) a(.|P) + q a(.|A), and over the side's own typed posture (1 - theta) a(P) + theta a(A).
-* Unseen ships: a sighting of age a is still right with probability (1 - m)^a (m = 0.33, the
-  share of ships in a contested zone that leave it in a period, from rule-based and greedy games).  The rest of
-  the opponent's known order of battle is spread evenly over the zones and its ports.
+* Unseen ships (FleetBelief): a Bayes filter under a simple movement model.  Each period a ship
+  stays with probability 1 - m or moves to a neighboring node (m = 0.33, the share of ships in a
+  contested zone that leave it in a period, from rule-based and greedy games).  Where the
+  opponent is detected the count is known, and the rest of its public order of battle is shared
+  over the nodes not seen in proportion to the prediction.
 * Multi-period best response: an H-period plan on a time-expanded copy of the map
   (ships follow paths, one edge or stay per period, endurance tracked along the path).
   Period 1 is carried out, then the plan is solved again next period.  The opponent is held
@@ -31,6 +33,7 @@ Regret (per decision): J_true(oracle plan) - J_true(learner plan), both evaluate
 values computed from the opponent's true theta on the same state.
 """
 import math
+import os
 import random
 from collections import defaultdict
 
@@ -79,85 +82,149 @@ def resolve(x):
 # ----------------------------------------------------------------------------
 # Belief about unseen ships
 # ----------------------------------------------------------------------------
-def believed_counts(obs, m, extra_age=0):
-    """Opponent kind counts per node: last sighting weighted by (1 - m)^age, plus the
-    rest of the opponent's (public) order of battle spread evenly over the contested zones
-    and the opponent's ports."""
-    opp = W.OPP[obs.player]
-    g = obs.graph
-    total = defaultdict(int)
-    for k, by_port in W.FLEET.items():
-        if W.SHIP_TYPES[k][0] == opp:
-            total[k] += sum(by_port.values())
-    cnt, seen = {}, defaultdict(float)
-    for v in g.nodes:
-        b = obs.belief.get(v, {})
-        wgt = (1.0 - m) ** (b.get('age', 0) + extra_age)
-        cnt[v] = {k: wgt * b.get(k, 0) for k in W.KINDS[opp]}
-        for k in W.KINDS[opp]:
-            seen[k] += cnt[v][k]
-    spread_nodes = list(g.contested) + list(g.homes[opp])
-    for k in W.KINDS[opp]:
-        rest = max(0.0, total[k] - seen[k]) / len(spread_nodes)
-        for v in spread_nodes:
-            cnt[v][k] += rest
-    return cnt
+class FleetBelief:
+    """Expected opponent ships of each type at each node, by Bayes' rule under a simple
+    movement model: each period a ship stays with probability 1 - m, or moves to one of its
+    node's neighbors with equal probability.
+
+    Predict: x_k(v) <- (1 - m) x_k(v) + sum_{u in N(v)} m x_k(u) / |N(u)|.
+    Update: where the opponent was detected this period the count is known.  The rest of the
+    opponent's (public) order of battle is shared over the nodes not seen, in proportion to the
+    predicted counts there.  A forecast tau periods ahead applies the prediction tau more times.
+    """
+
+    def __init__(self, game, player, m):
+        self.player, self.m = player, m
+        self.opp = W.OPP[player]
+        g = game.g
+        banned = set(g.homes[player])                # the opponent cannot enter my ports
+        self.nodes = [v for v in g.nodes if v not in banned]
+        self.adj = {v: [u for u in g.adj[v] if u not in banned] for v in self.nodes}
+        self.kinds = W.KINDS[self.opp]
+        counts = game.counts()
+        self.total = {k: sum(counts[v][k] for v in g.nodes) for k in self.kinds}
+        self.x = {k: {v: float(counts[v][k]) for v in self.nodes} for k in self.kinds}
+        self._fc = None
+
+    def _predict(self, x):
+        m = self.m
+        out = {}
+        for k, xk in x.items():
+            nk = {v: (1 - m) * xk[v] for v in self.nodes}
+            for u in self.nodes:
+                if xk[u] and self.adj[u]:
+                    share = m * xk[u] / len(self.adj[u])
+                    for v in self.adj[u]:
+                        nk[v] += share
+                elif xk[u]:
+                    nk[u] += m * xk[u]
+            out[k] = nk
+        return out
+
+    def step(self, obs):
+        """One period: predict, then condition on this period's detections."""
+        x = self._predict(self.x)
+        seen = [v for v in self.nodes if obs.belief.get(v, {}).get('age', 1) == 0]
+        for k in self.kinds:
+            known = 0.0
+            for v in seen:
+                x[k][v] = float(obs.belief[v].get(k, 0))
+                known += x[k][v]
+            rest = [v for v in self.nodes if v not in seen]
+            mass = sum(x[k][v] for v in rest)
+            left = max(0.0, self.total[k] - known)
+            if mass > 0:
+                for v in rest:
+                    x[k][v] *= left / mass
+            elif rest and left > 0:
+                for v in rest:
+                    x[k][v] = left / len(rest)
+        self.x = x
+        self._fc = [x]
+
+    def forecast(self, tau):
+        """Expected counts tau periods after the current one: {node: {type: count}}."""
+        if self._fc is None:
+            self._fc = [self.x]
+        while len(self._fc) <= tau:
+            self._fc.append(self._predict(self._fc[-1]))
+        xt = self._fc[tau]
+        return defaultdict(dict, {v: {k: xt[k][v] for k in self.kinds} for v in self.nodes})
+
+
+def _opp_counts(obs, belief, tau):
+    """Believed opponent counts per node tau periods ahead.  belief is a FleetBelief, or None for
+    the engine's last-seen counts (as in the Workshop 2 MIP-BR)."""
+    if belief is None:
+        return {v: obs.opp_counts(v) for v in obs.graph.nodes}
+    fc = belief.forecast(tau)
+    return {v: fc.get(v, {}) for v in obs.graph.nodes}
 
 
 # ----------------------------------------------------------------------------
 # Paths for the multi-period plan
 # ----------------------------------------------------------------------------
-def ship_paths(obs, s, H):
-    """All H-step paths for free ship s.  Step 1 uses the one-period candidate rule.  Later steps
-    stay or move one edge, never into the opponent's ports or a storm-closed node, and a ship
-    must keep enough endurance to reach a refuel point (own port or oiler) from where it is."""
-    game, g = obs.game, obs.graph
-    i = s.owner
-    D = W.D_K[s.kind]
-    oiler = obs.oiler
-    opp_homes = set(g.homes[W.OPP[i]])
+class Mover:
+    """Movement rules of one ship type for planning.  Step 1 uses the one-period candidate rule
+    for the actual ship.  Later steps stay or move one edge, never into the opponent's ports or a
+    storm-closed node, and the ship must keep enough endurance to reach a refuel point (own port or
+    oiler).  A ship with no endurance to spare heads for a refuel point, as forced returns do."""
 
-    def refuel_dist(v):
-        d = g.port_dist[s.nation][v]
-        if oiler is not None and oiler.on_station:
-            d = min(d, g.dist[i][v][oiler.loc])
+    def __init__(self, obs, s):
+        self.obs, self.s = obs, s
+        self.g = obs.graph
+        self.i = s.owner
+        self.D = W.D_K[s.kind]
+        self.oiler = obs.oiler
+        self.opp_homes = set(self.g.homes[W.OPP[self.i]])
+
+    def refuel_dist(self, v):
+        g, o = self.g, self.oiler
+        d = g.port_dist[self.s.nation][v]
+        if o is not None and o.on_station:
+            d = min(d, g.dist[self.i][v][o.loc])
         return d
 
-    def next_d(d, prev, w):
+    def next_d(self, d, prev, w):
         stayed = prev == w
-        if g.is_port(s, w):
-            return D if stayed else d
-        if oiler is not None and oiler.loc == w and stayed:
-            return D
+        if self.g.is_port(self.s, w):
+            return self.D if stayed else d
+        if self.oiler is not None and self.oiler.loc == w and stayed:
+            return self.D
         return max(0, d - 1)
 
-    paths = []
-
-    def nexts(u, d):
-        if not g.is_port(s, u) and not (oiler is not None and oiler.loc == u) and d <= refuel_dist(u):
-            # forced return (as in the engine): step toward the nearest refuel point
-            hops = [w for w in g.adj[u] if w not in obs.closed and w not in opp_homes and refuel_dist(w) < refuel_dist(u)]
+    def nexts(self, u, d):
+        g, obs, s = self.g, self.obs, self.s
+        if not g.is_port(s, u) and not (self.oiler is not None and self.oiler.loc == u) and d <= self.refuel_dist(u):
+            hops = [w for w in g.adj[u] if w not in obs.closed and w not in self.opp_homes
+                    and self.refuel_dist(w) < self.refuel_dist(u)]
             return hops or [u]
         out = []
         for w in [u] + list(g.adj[u]):
-            if w in obs.closed or w in opp_homes:
+            if w in obs.closed or w in self.opp_homes:
                 continue
-            if i == 'B' and w != u and (w in obs.blocked or u in obs.blocked):
+            if self.i == 'B' and w != u and (w in obs.blocked or u in obs.blocked):
                 continue
-            if g.is_port(s, w) or next_d(d, u, w) >= refuel_dist(w):
+            if g.is_port(s, w) or self.next_d(d, u, w) >= self.refuel_dist(w):
                 out.append(w)
         return out or [u]
+
+
+def ship_paths(obs, s, H):
+    """All H-step paths for free ship s (used for checks; the MIP uses the state graph below)."""
+    mv = Mover(obs, s)
+    paths = []
 
     def extend(path, d):
         if len(path) == H:
             paths.append(tuple(path))
             return
         u = path[-1]
-        for w in nexts(u, d):
-            extend(path + [w], next_d(d, u, w))
+        for w in mv.nexts(u, d):
+            extend(path + [w], mv.next_d(d, u, w))
 
     for w in W.candidate_dests(obs, s):
-        extend([w], next_d(s.d, s.loc, w))
+        extend([w], mv.next_d(s.d, s.loc, w))
     return paths
 
 
@@ -195,6 +262,7 @@ class LearnPolicy(W.Policy):
         self.a0, self.b0 = dict(self.a), dict(self.b)
         self.type = resolve(cfg['type'])            # own on-scene assertion rates (None: MIP chooses posture)
         self.opp_type = resolve(cfg['opp_type'])    # opponent's true rates (oracle and regret only)
+        self.fleet = FleetBelief(game, player, cfg['m_move']) if cfg.get('fleet_belief', True) else None
         self.t = 0
         self.log = []                               # per-period records: beliefs, rates used, regret
 
@@ -228,9 +296,11 @@ class LearnPolicy(W.Policy):
     def act(self, obs):
         self.t = obs.t
         self.update(obs)
+        if self.fleet is not None:
+            self.fleet.step(obs)
         q = self.rates()
         commit = self.rule == 'committed' and self.t <= self.cfg['N_e']
-        plan = solve_plan(obs, q, self.type, self.H, self.cfg['m_move'], commit=commit)
+        plan = solve_plan(obs, q, self.type, self.H, self.fleet, commit=commit)
         rec = {'t': self.t, 'q': q, 'mean': {v: self.mean(v) for v in self.a},
                'n': {v: self.a[v] + self.b[v] - self.a0[v] - self.b0[v] for v in self.a},
                'obj': plan['obj']}
@@ -238,8 +308,8 @@ class LearnPolicy(W.Policy):
             if self.rule == 'oracle':
                 rec['regret'] = 0.0
             else:
-                best = solve_plan(obs, self.opp_type, self.type, self.H, self.cfg['m_move'])
-                mine = plan_value_true(obs, plan, self.opp_type, self.type, self.H, self.cfg['m_move'])
+                best = solve_plan(obs, self.opp_type, self.type, self.H, self.fleet)
+                mine = plan_value_true(obs, plan, self.opp_type, self.type, self.H, self.fleet)
                 rec['regret'] = max(0.0, best['obj'] - mine)
         self.log.append(rec)
         moves = plan['moves']
@@ -283,67 +353,115 @@ def _option_fn(obs, v, opp_cnt, q_v, own_theta):
     return option
 
 
-def _setup(obs, H):
-    """Groups of interchangeable free ships with their H-step paths, and fixed (forced) paths."""
-    groups = defaultdict(list)
+def _fixed(obs, H):
+    """Ships under forced return: (kind, positions at periods 0..H)."""
+    return [(s.kind, (s.loc,) + forced_path(obs, s, obs.forced[s.id], H)) for s in obs.ships if s.id in obs.forced]
+
+
+def _flows(m_, obs, H):
+    """Integer flows of the free ships on a time-expanded state graph.  A state is (ship type,
+    node, endurance left), so ships of one type in the same state are interchangeable and a
+    solution splits into whole-ship paths (flow decomposition).  Returns the first-period arcs,
+    the arrivals per (node, period) and type, and the moves per period."""
+    import gurobipy as gp
+    start = defaultdict(list)
     for s in obs.free:
-        groups[(s.kind, s.loc, s.d)].append(s)
-    gpaths = {key: ship_paths(obs, members[0], H) for key, members in groups.items()}
-    fixed = [(s.kind, (s.loc,) + forced_path(obs, s, obs.forced[s.id], H)) for s in obs.ships if s.id in obs.forced]
-    return groups, gpaths, fixed
+        start[(s.kind, s.loc, s.d)].append(s)
+    movers, n_kind = {}, defaultdict(int)
+    first = {}
+    into = defaultdict(list)                  # (v, tau, k) -> arc vars arriving at v in period tau
+    moves = [[] for _ in range(H)]
+    inflow = defaultdict(list)
+    layer = defaultdict(int)                  # state -> most ships that can be in it
+    for (k, u, d), members in start.items():
+        rep = members[0]
+        mv = movers.setdefault(k, Mover(obs, rep))
+        n_kind[k] += len(members)
+        out = []
+        for w in W.candidate_dests(obs, rep):
+            d2 = mv.next_d(d, u, w)
+            x = m_.addVar(vtype='I', lb=0, ub=len(members))
+            first[(k, u, d), w] = x
+            out.append(x)
+            into[w, 0, k].append(x)
+            if w != u:
+                moves[0].append(x)
+            inflow[1, (k, w, d2)].append(x)
+            layer[(k, w, d2)] += len(members)
+        m_.addConstr(gp.quicksum(out) == len(members))
+    for tau in range(1, H):
+        new = defaultdict(int)
+        for (k, u, d), ub in layer.items():
+            mv = movers[k]
+            ub = min(ub, n_kind[k])
+            out = []
+            for w in mv.nexts(u, d):
+                d2 = mv.next_d(d, u, w)
+                x = m_.addVar(vtype='I', lb=0, ub=ub)
+                out.append(x)
+                into[w, tau, k].append(x)
+                if w != u:
+                    moves[tau].append(x)
+                inflow[tau + 1, (k, w, d2)].append(x)
+                new[(k, w, d2)] += ub
+            m_.addConstr(gp.quicksum(out) == gp.quicksum(inflow[tau, (k, u, d)]))
+        layer = new
+    return start, first, into, moves, n_kind
 
 
-def solve_plan(obs, q, own_type, H, m, commit=False):
-    """Solve the H-period plan.  Returns moves (period 1), postures (period 1), objective, and the
-    path counts (for evaluating the plan under other rates)."""
+def _navy_share(obs):
+    """Navy share of the side's strength units (used by the coarse plan in later periods)."""
+    P = obs.P
+    navy = sum(W.weight(P, s.kind) for s in obs.ships if W.CLASS_K[s.kind] == 'navy')
+    tot = sum(W.weight(P, s.kind) for s in obs.ships)
+    return navy / tot if tot else 1.0
+
+
+def solve_plan(obs, q, own_type, H, m=None, commit=False, coarse=None):
+    """Solve the H-period plan.  Returns moves and postures for period 1, the objective, and the
+    planned levels, moves and postures in every period (to evaluate the plan under other rates)."""
     import gurobipy as gp
     P, me, g = obs.P, obs.player, obs.graph
     eps = W.risk_budget(P['eps'][me], obs.ell, P)
     delta, gamma = P['delta'], P['gamma']
-    groups, gpaths, fixed = _setup(obs, H)
+    fixed = _fixed(obs, H)
+    if coarse is None:
+        coarse = os.environ.get('LEARN_COARSE', '0') == '1'
+    share = _navy_share(obs)
     m_ = gp.Model(env=W.MIPBRPolicy.env())
-    z = {}
-    for key, members in groups.items():
-        for pi in gpaths[key]:
-            z[key, pi] = m_.addVar(vtype='I', lb=0, ub=len(members))
-        m_.addConstr(gp.quicksum(z[key, pi] for pi in gpaths[key]) == len(members))
+    m_.Params.PreSOS2Encoding = 3           # how Gurobi encodes the piecewise-linear terms (faster here; same optimum)
+    start, first, into, moves, n_kind = _flows(m_, obs, H)
     obj = 0
-    slacks = []
-    post_vars = {}
+    post_vars, lev_expr, move_expr = {}, {}, []
     for tau in range(H):
         disc = delta ** tau
-        # moves in period tau (forced moves are charged first, as in the engine)
         forced_moves = sum(1 for k, path in fixed if path[tau + 1] != path[tau])
-        moves_tau = gp.quicksum(var for (key, pi), var in z.items()
-                                if pi[tau] != (key[1] if tau == 0 else pi[tau - 1]))
-        budget = obs.fuel if tau == 0 else max(0, obs.game.F[me] - forced_moves)
+        moves_tau = gp.quicksum(moves[tau])
+        move_expr.append(moves_tau)
         if tau == 0:
-            m_.addConstr(moves_tau <= budget)
+            m_.addConstr(moves_tau <= obs.fuel)
         else:                                   # later periods: forced returns inside the plan may need more
             over = m_.addVar(lb=0)
-            m_.addConstr(moves_tau <= budget + over)
+            m_.addConstr(moves_tau <= max(0, obs.game.F[me] - forced_moves) + over)
             obj += -50.0 * disc * over
         obj += -gamma * disc * moves_tau
-        opp_cnt_all = believed_counts(obs, m, extra_age=tau)
+        opp_cnt_all = _opp_counts(obs, m, tau)
         risk_terms = []
         for v in g.contested:
             sea = obs.sea_at(v)
             unit = {k: int(round(W.weight(P, k, sea == 'rough') / W.STRENGTH_UNIT)) for k in W.KINDS[me]}
             option = _option_fn(obs, v, opp_cnt_all[v], q[v], own_type[v] if own_type else 0.0)
             lev, top, reach = {}, {}, {}
-            arr = [(key, pi) for (key, pi) in z if pi[tau] == v]
             for cl in ('navy', 'cg'):
                 base = sum(unit[k] for k, path in fixed if path[tau + 1] == v and W.CLASS_K[k] == cl)
-                terms = [(key, pi) for key, pi in arr if W.CLASS_K[key[0]] == cl]
-                lev[cl] = base + gp.quicksum(unit[key[0]] * z[key, pi] for key, pi in terms)
-                gmax = defaultdict(int)
-                for key, pi in terms:
-                    gmax[key] = len(groups[key])
-                top[cl] = base + sum(unit[key[0]] * nmax for key, nmax in gmax.items())
+                kinds = [k for k in n_kind if W.CLASS_K[k] == cl and into.get((v, tau, k))]
+                lev[cl] = base + gp.quicksum(unit[k] * x for k in kinds for x in into[v, tau, k])
+                top[cl] = base + sum(unit[k] * n_kind[k] for k in kinds)
                 levels = {base}
-                for key, nmax in gmax.items():
-                    levels = {x + j * unit[key[0]] for x in levels for j in range(nmax + 1)}
+                for k in kinds:
+                    levels = {x + j * unit[k] for x in levels for j in range(n_kind[k] + 1)}
                 reach[cl] = sorted(levels)
+            lev_expr[v, tau] = (lev['navy'], lev['cg'])
             if commit and tau == 0 and top['navy'] + top['cg'] > 0:
                 short = m_.addVar(lb=0, ub=1)
                 m_.addConstr(lev['navy'] + lev['cg'] >= 1 - short)
@@ -368,7 +486,18 @@ def solve_plan(obs, q, own_type, H, m, commit=False):
                 risk_terms.append(rv - vals[0][1] * (1 - y[okey]))
                 return av - vals[0][0] * (1 - y[okey])
 
-            if own_type:
+            if coarse and tau > 0:
+                # later periods (coarse plan): value over the total level, at the fleet's navy share
+                total = sorted({a + b for a in reach['navy'] for b in reach['cg']})
+                sh = share
+                if own_type:
+                    obj += disc * add_option(('T', None), total, lambda x: option(x * sh, x * (1 - sh), 'T'))
+                else:
+                    obj += disc * add_option(('P', None), total, lambda x: option(x, 0, 'P'))
+                    obj += disc * add_option(('A', None), total, lambda x: option(x * sh, x * (1 - sh), 'A'))
+                m_.addConstr(gp.quicksum(y.values()) == 1)
+                m_.addConstr(gp.quicksum(lvl.values()) == lev['navy'] + lev['cg'])
+            elif own_type:
                 # typed posture: one option per coast guard level c, over the navy level
                 for c in reach['cg']:
                     obj += disc * add_option(('T', c), reach['navy'], lambda x, c=c: option(x, c, 'T'))
@@ -390,65 +519,63 @@ def solve_plan(obs, q, own_type, H, m, commit=False):
         slack = m_.addVar(lb=0.0)
         m_.addConstr(gp.quicksum(risk_terms) <= eps + slack)
         obj += -1000.0 * disc * slack
-        slacks.append(slack)
     m_.setObjective(obj, gp.GRB.MAXIMIZE)
     m_.optimize()
-    counts = {(key, pi): int(round(var.X)) for (key, pi), var in z.items() if var.X > 0.5}
-    moves = {}
-    for key, members in groups.items():
-        pool = sorted(members, key=lambda s: -s.d)
-        for pi in gpaths[key]:
-            n = counts.get((key, pi), 0)
-            if pi[0] == key[1]:
-                for _ in range(n):
-                    pool.pop(0)
+    dump = os.environ.get('LEARN_DUMP')
+    if dump and m_.Runtime > float(os.environ.get('LEARN_DUMP_SECS', 10)):
+        m_.write(os.path.join(dump, f'{me}_t{obs.t}_H{H}_{m_.Runtime:.0f}s.mps'))
+    out = {}
+    for (k, u, d), members in start.items():
+        pool = sorted(members, key=lambda s: s.id)
+        for (key, w), x in first.items():
+            if key != (k, u, d) or w == u:
                 continue
-            for _ in range(n):
-                moves[pool.pop(0).id] = pi[0]
-    post = {}
+            for _ in range(int(round(x.X))):
+                out[pool.pop(0).id] = w
+    post, post_tau = {}, {}
     for (v, tau), (y, lvl) in post_vars.items():
-        if tau > 0:
+        chosen = next((pc for pc, var in y.items() if var.X > 0.5), ('P', None))
+        p, c = chosen
+        if p == 'T':
             continue
-        for (p, c), var in y.items():
-            if p in 'PA' and var.X > 0.5 and (c or 0) + lvl[p, c].X > 0.5:
-                post[v] = p
-    return {'moves': moves, 'post': post, 'obj': m_.ObjVal, 'counts': counts,
-            'size': (m_.NumVars, m_.NumConstrs, m_.NumGenConstrs), 'slack': [s.X for s in slacks],
-            'post_tau': _post_all(post_vars)}
+        occupied = (c if (p == 'A' and c is not None and not (coarse and tau > 0)) else 0) + lvl[p, c].X > 0.5
+        post_tau[v, tau] = p if occupied else 'P'
+        if tau == 0 and occupied:
+            post[v] = p
+    levels = {vt: (int(round(_val(a))), int(round(_val(b)))) for vt, (a, b) in lev_expr.items()}
+    return {'moves': out, 'post': post, 'obj': m_.ObjVal, 'levels': levels, 'coarse': coarse, 'share': share,
+            'nmoves': [int(round(_val(e))) for e in move_expr], 'post_tau': post_tau,
+            'size': (m_.NumVars, m_.NumConstrs, m_.NumGenConstrs), 'runtime': m_.Runtime}
 
 
-def _post_all(post_vars):
-    return {vt: next((p for (p, c), var in y.items() if var.X > 0.5), 'P') for vt, (y, lvl) in post_vars.items()}
+def _val(e):
+    return e.getValue() if hasattr(e, 'getValue') else float(e)
 
 
-def plan_value_true(obs, plan, q, own_type, H, m):
-    """The MIP objective of a solved plan (its paths and postures) when the option values and
-    risks are computed from rates q instead of the rates the plan was made with."""
+def plan_value_true(obs, plan, q, own_type, H, m=None):
+    """The MIP objective of a solved plan (its levels, moves and postures in every period) when the
+    option values and risks are computed from rates q instead of the rates the plan was made with."""
     P, me, g = obs.P, obs.player, obs.graph
-    groups, gpaths, fixed = _setup(obs, H)
     eps = W.risk_budget(P['eps'][me], obs.ell, P)
     delta, gamma = P['delta'], P['gamma']
     total = 0.0
     for tau in range(H):
         disc = delta ** tau
-        moves_tau = sum(n for (key, pi), n in plan['counts'].items()
-                        if pi[tau] != (key[1] if tau == 0 else pi[tau - 1]))
-        total += -gamma * disc * moves_tau
-        opp_cnt_all = believed_counts(obs, m, extra_age=tau)
+        total += -gamma * disc * plan['nmoves'][tau]
+        opp_cnt_all = _opp_counts(obs, m, tau)
         risk = 0.0
         for v in g.contested:
-            sea = obs.sea_at(v)
-            unit = {k: int(round(W.weight(P, k, sea == 'rough') / W.STRENGTH_UNIT)) for k in W.KINDS[me]}
-            lev = {'navy': 0, 'cg': 0}
-            for k, path in fixed:
-                if path[tau + 1] == v:
-                    lev[W.CLASS_K[k]] += unit[k]
-            for (key, pi), n in plan['counts'].items():
-                if pi[tau] == v:
-                    lev[W.CLASS_K[key[0]]] += unit[key[0]] * n
+            n_, c_ = plan['levels'].get((v, tau), (0, 0))
             option = _option_fn(obs, v, opp_cnt_all[v], q[v], own_type[v] if own_type else 0.0)
-            n_, c_ = lev['navy'], lev['cg']
-            if own_type:
+            if plan.get('coarse') and tau > 0:
+                x, sh = n_ + c_, plan['share']
+                if own_type:
+                    a_, r_ = option(x * sh, x * (1 - sh), 'T')
+                elif plan['post_tau'].get((v, tau), 'P') == 'A' and x > 0:
+                    a_, r_ = option(x * sh, x * (1 - sh), 'A')
+                else:
+                    a_, r_ = option(x, 0, 'P')
+            elif own_type:
                 a_, r_ = option(n_, c_, 'T')
             elif plan['post_tau'].get((v, tau), 'P') == 'A' and n_ + c_ > 0:
                 a_, r_ = option(n_, c_, 'A')
