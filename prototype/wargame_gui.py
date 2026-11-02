@@ -2072,6 +2072,7 @@ def launch_gui():
         "the stored results instead of replaying them. Other setups run live, and the log says so.\n\n"
         "READING THE MAP: circle color and number = who controls that water, from -1 (fully Red) "
         "to +1 (fully Blue). B = Blue destroyers, P = Red navy ships, C = Red coast guard. "
+        "Sliding dots = ships sailing to a new zone this turn (number = ships in the group). "
         "Orange ring = incident this turn. Shaded box = rough sea or storm (no one operates in a "
         "storm). 'Blue view' / 'Red view' show what each side believes; ~n[a] means n ships "
         "last seen a turns ago.\n\n"
@@ -2104,6 +2105,7 @@ def launch_gui():
             self.running = False
             self.n_events_shown = 0
             self.batch_job = None
+            self.anim_job = None
             self._build()
             self.reset()
 
@@ -2240,6 +2242,9 @@ def launch_gui():
                         params={'eps': {'B': s['epsB'], 'R': s['epsR']}})
 
         def reset(self):
+            if self.anim_job:
+                self.root.after_cancel(self.anim_job)
+                self.anim_job = None
             self.running = False
             self.run_btn.configure(text='Play')
             s = self._settings()
@@ -2262,11 +2267,59 @@ def launch_gui():
                                 "seeds 0-4 of the setups in the Workshop 2 results.")
             self.redraw()
 
-        def step_once(self):
-            if self.game.done:
+        def step_once(self, ms=500):
+            """Play one turn.  Ships that change zone are first animated along their edge (ms long),
+            then the map is redrawn in the new state."""
+            if self.game.done or self.anim_job:
                 return
+            before = {s.id: s.loc for s in self.game.ships}
             self.game.step()
-            self.redraw()
+            moves = {}
+            view = self.v_view.get()
+            for s in self.game.ships:
+                a = before.get(s.id)
+                if a is None or a == s.loc or (view in 'BR' and s.owner != view):
+                    continue        # a side's view shows only its own ships moving
+                col = (BLUE if s.owner == 'B' else (CCG_COL if CLASS_K[s.kind] == 'cg' else RED))
+                k = (a, s.loc, s.owner, col)
+                moves[k] = moves.get(k, 0) + 1
+            if not moves or ms < 60:
+                self.redraw()
+                return
+            self.animate(moves, ms)
+
+        def animate(self, moves, ms):
+            """Slide one marker per (edge, side, ship class) from its old zone to its new one.  Markers on
+            the same edge are offset sideways so Blue and Red ships passing each other stay visible."""
+            cv = self.map
+            pos = {v: project(NODES[v][1], NODES[v][2]) for v in self.game.g.nodes}
+            lanes, items = {}, []
+            for (a, b, owner, col), n in sorted(moves.items()):
+                (x1, y1), (x2, y2) = pos[a], pos[b]
+                edge = frozenset((a, b))
+                lane = lanes.get(edge, 0)
+                lanes[edge] = lane + 1
+                L = math.hypot(x2 - x1, y2 - y1) or 1.0
+                off = 7 * (lane - 0.5) if lane < 2 else 7 * lane
+                ox, oy = -(y2 - y1) / L * off, (x2 - x1) / L * off
+                dot = cv.create_oval(0, 0, 0, 0, fill=col, outline='white', width=1)
+                txt = cv.create_text(0, 0, text=str(n) if n > 1 else '', fill='white', font=('TkDefaultFont', 7, 'bold'))
+                items.append((dot, txt, x1 + ox, y1 + oy, x2 + ox, y2 + oy))
+            frames = max(2, ms // 30)
+
+            def frame(k=1):
+                f = k / frames
+                f = f * f * (3 - 2 * f)         # ease in and out
+                for dot, txt, x1, y1, x2, y2 in items:
+                    x, y = x1 + (x2 - x1) * f, y1 + (y2 - y1) * f
+                    cv.coords(dot, x - 6, y - 6, x + 6, y + 6)
+                    cv.coords(txt, x, y)
+                if k < frames:
+                    self.anim_job = self.root.after(ms // frames, frame, k + 1)
+                else:
+                    self.anim_job = None
+                    self.redraw()
+            frame()
 
         def toggle_run(self):
             if self.game.done:
@@ -2279,12 +2332,13 @@ def launch_gui():
         def tick(self):
             if not self.running:
                 return
-            self.step_once()
+            delay = 1550 - int(self.speed.get())
+            self.step_once(ms=int(0.7 * delay))
             if self.game.done:
                 self.running = False
                 self.run_btn.configure(text='Play')
                 return
-            self.root.after(1550 - int(self.speed.get()), self.tick)
+            self.root.after(delay, self.tick)
 
         def show_help(self):
             from tkinter import messagebox
