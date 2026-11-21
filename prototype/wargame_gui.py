@@ -79,6 +79,20 @@ PARAMS = {
     'h0': 0.006, 'hA_navy': {'B': 0.03, 'R': 0.036}, 'hA_cg': {'B': 0.01, 'R': 0.012}, 'h_scale': 0.12,
     # escalation ladder: L = armed conflict; mu = probability ell drops by one after a quiet period
     'L': 5, 'ell0': 1, 'mu': 0.25,
+    # Workshop 2 escalation belief: when True, neither side sees ell.  Each side holds a belief over
+    # ell (EscalationBelief) built from public incident reports; the engine keeps the true level.
+    # False reproduces every earlier result exactly.
+    'esc_hidden': False,
+    # belief filter under esc_hidden: 'F0' incident count and "no war yet" only; 'F1' adds the
+    # likelihood of where incidents did and did not happen given each level (the hazard grows with
+    # 1 + ell/2), using the side's own ships and postures and its believed opponent counts and postures;
+    # 'F1x' is F1 with the true opponent counts and postures (diagnostic upper bound, not a player)
+    'esc_filter': 'F0',
+    # rule-based tests 'ell >= k' under a belief: act as if ell >= k when Pr(ell >= k) >= esc_tau
+    'esc_tau': 0.25,
+    # optional cap on the believed probability of war this period for MIP-BR (None = off): if the
+    # plan exceeds it, MIP-BR re-solves with the risk budget halved (up to 4 times)
+    'war_cap': None,
     # payoffs
     'gamma': 0.1, 'eta': 1.0, 'W': 200.0,
     # penalty per expected incident used by the best-response MIP and the template game
@@ -364,6 +378,21 @@ def hazard_rate(P, design, ell, S_B, S_R, pB, pR, shares):
     return P['h_scale'] * base * min(S_B, S_R) * (1.0 + ell / 2.0)
 
 
+def is_belief(ell):
+    """Escalation given as a belief (a list of probabilities over levels 0..L) rather than a known level."""
+    return isinstance(ell, (list, tuple))
+
+
+def incident_prob(P, design, ell, S_B, S_R, pB, pR, shares):
+    """p_v = 1 - exp(-h_v).  For a belief b over levels, the belief-weighted probability
+    sum_e b(e) (1 - exp(-h_v(e))): each level is evaluated on its own (the hazard is not linear in ell,
+    and D3 switches at ell = 3), never at the mean level."""
+    if is_belief(ell):
+        return sum(w * (1.0 - math.exp(-hazard_rate(P, design, e, S_B, S_R, pB, pR, shares)))
+                   for e, w in enumerate(ell) if w > 0.0)
+    return 1.0 - math.exp(-hazard_rate(P, design, ell, S_B, S_R, pB, pR, shares))
+
+
 def node_eval(P, design, ell, me, own_cnt, post_me, opp_cnt, post_opp, sea='calm'):
     """Evaluate a node from player `me`'s point of view.
 
@@ -378,8 +407,7 @@ def node_eval(P, design, ell, me, own_cnt, post_me, opp_cnt, post_opp, sea='calm
     pB, pR = (post_me, post_opp) if me == 'B' else (post_opp, post_me)
     S_B, S_R, ps = strength_parts(P, cnt, pB, pR, rough=(sea == 'rough'))
     phi = (S_B - S_R) / (S_B + S_R + P['kappa'])
-    h = hazard_rate(P, design, ell, S_B, S_R, pB, pR, ps)
-    return SIGMA[me] * phi, 1.0 - math.exp(-h)
+    return SIGMA[me] * phi, incident_prob(P, design, ell, S_B, S_R, pB, pR, ps)
 
 
 def horizon_factor(P):
@@ -435,26 +463,120 @@ class Oiler:
 # 4.  OBSERVATIONS  o_i^t
 # ============================================================================
 
+class EscalationBelief:
+    """A player's belief b_t(e) = Pr(ell_t = e | what the player has seen), e = 0..L.
+
+    While the game goes on b(L) = 0 (war is observed and ends the game).  update() follows the order
+    of Game.step: incidents are drawn at the period's starting level, each incident adds one level
+    (capped at L), a quiet period drops one level with probability mu (0.5 at ell >= 3 under D3),
+    and then war is observed or not.
+
+        1. evidence   b(e) <- b(e) Pr(incident pattern | e) / Z      (only if a likelihood is given)
+        2. transition b'(min(L, e+N)) += b(e) if N >= 1 incidents, else
+                      b'(e-1) += mu(e) b(e),  b'(e) += (1 - mu(e)) b(e)
+        3. war        no war: b'(L) <- 0 and renormalize;  war: b' = point mass at L
+
+    Filter F0 passes no likelihood: it uses only the public incident count and the fact that war has
+    not broken out, so both sides hold the same belief and no knowledge of the opponent is needed.
+    It throws away what the incidents say about the level through the hazard (the hazard grows with
+    1 + ell/2).  Filter F1 (P['esc_filter'] = 'F1', Game.incident_lik) adds that as the likelihood
+    in step 1:  Pr(pattern | e) = prod_v p_v(e)^[incident at v] (1 - p_v(e))^[no incident at v],
+    over the zones where the side had ships, with p_v(e) from its own ships and postures and its
+    believed opponent counts and postures.  Quiet periods with ships in contact now pull the belief
+    down and incidents at low-contact zones push it up.  Under F1 the two sides' beliefs differ.
+    No random numbers are drawn.
+    """
+
+    def __init__(self, P, design, prior=None):
+        self.L, self.mu, self.design = P['L'], P['mu'], design
+        if prior is None:
+            prior = [0.0] * (self.L + 1)
+            prior[P['ell0']] = 1.0
+        z = sum(prior)
+        self.b = [p / z for p in prior]
+
+    def mu_at(self, e):
+        """Probability that a quiet period lowers the level from e (as in Game.step)."""
+        if e <= 0:
+            return 0.0
+        return 0.5 if (self.design == 'D3' and e >= 3) else self.mu
+
+    def update(self, n_inc, war, lik=None):
+        L = self.L
+        b = list(self.b)
+        if lik is not None:
+            post = [p * q for p, q in zip(b, lik)]
+            z = sum(post)
+            if z > 0:                       # an observation the model calls impossible: keep the prediction
+                b = [p / z for p in post]
+        nb = [0.0] * (L + 1)
+        for e, p in enumerate(b):
+            if p == 0.0:
+                continue
+            if n_inc:
+                nb[min(L, e + n_inc)] += p
+            else:
+                d = self.mu_at(e)
+                if d:
+                    nb[e - 1] += p * d
+                nb[e] += p * (1.0 - d)
+        if war:
+            nb = [0.0] * L + [1.0]
+        else:
+            nb[L] = 0.0
+            z = sum(nb)
+            if z > 0:
+                nb = [p / z for p in nb]
+            else:                           # cannot happen under F0 (the true level is always in the support)
+                top = max(0, L - 1 - n_inc)
+                nb = [1.0 / (top + 1) if e <= top else 0.0 for e in range(L + 1)]
+        self.b = nb
+
+    def mean(self):
+        return sum(e * p for e, p in enumerate(self.b))
+
+    def prob_at_least(self, k):
+        return sum(self.b[k:])
+
+    def mode(self):
+        """Most likely level (ties go to the higher level, the cautious reading)."""
+        return max(range(len(self.b)), key=lambda e: (self.b[e], e))
+
+
 class Obs:
     """What player i is allowed to see when choosing an action.
 
-    Own ships, ell, all c_v (public perception), the player's belief about
+    Own ships, all c_v (public perception), the player's belief about
     opponent ships (last-seen counts per node with an age), the opponent
     postures last observed, region closures and blockades affecting the
     player, and which own ships are under forced return this period.
+
+    Escalation: esc_belief is the player's belief over ell (a list over 0..L) and incidents_last the
+    zones of last period's incidents (public).  esc is what policies pass wherever a level is needed:
+    the true level when P['esc_hidden'] is False (as before), the belief list when it is True.
+    node_eval, eval_strength and risk_budget average over the levels of a belief, and esc_at_least
+    turns the rule-based 'ell >= k' tests into Pr(ell >= k) >= esc_tau.  ell is the true level, or
+    under esc_hidden only the most likely level (for display; no policy reads it).
+    The engine itself is kept in _game: policies must not read it.
     """
 
     def __init__(self, game, player, t, forced):
-        self.game = game
+        self._game = game
         self.player = player
         self.t = t
-        self.ell = game.ell
+        self.hidden = game.hidden
+        self.esc_belief = list(game.esc_belief[player].b)
+        self.incidents_last = sorted(game.last_incidents)
+        self.ell = game.esc_belief[player].mode() if self.hidden else game.ell
+        self.esc = self.esc_belief if self.hidden else game.ell   # what policies pass as 'ell'
         self.c = dict(game.c)
         self.graph = game.g
         self.P = game.P
         self.design = game.design
         self.rng = game.rng
         self.ships = [s for s in game.ships if s.owner == player]
+        self.ship_by_id = {s.id: s for s in self.ships}  # own ships only
+        self.F_total = game.F[player]                   # movement budget before forced returns
         self.forced = dict(forced)                      # ship id -> destination (may equal loc)
         self.free = [s for s in self.ships if s.id not in forced]
         self.belief = {v: dict(b) for v, b in game.belief[player].items()}
@@ -469,10 +591,10 @@ class Obs:
         self.fuel = max(0, game.F[player] - n_forced_moves)
 
     def legal_dests(self, ship):
-        return self.game.legal_dests(ship)
+        return self._game.legal_dests(ship)
 
     def reach_ok(self, ship, v):
-        return self.game.reach_ok(ship, v)
+        return self._game.reach_ok(ship, v)
 
     def opp_counts(self, v):
         """Believed opponent kind counts at node v."""
@@ -546,6 +668,12 @@ class Game:
         # --- state
         self.c = dict(C0)
         self.ell = self.P['ell0']
+        # escalation beliefs (filter F0, public information only); players see ell only through these
+        # when esc_hidden is on.  truth_events logs what only the evaluator may see (level changes).
+        self.hidden = bool(self.P.get('esc_hidden', False))
+        self.esc_belief = {i: EscalationBelief(self.P, design) for i in 'BR'}
+        self.truth_events = []
+        self.last_war_risk = {'B': 0.0, 'R': 0.0}
         self.t = 0
         self.postures = {'B': {v: 'P' for v in self.g.contested}, 'R': {v: 'P' for v in self.g.contested}}
         self.closed = {}            # node -> periods of storm closure remaining
@@ -838,14 +966,15 @@ class Game:
                 forced[s.owner][s.id] = fm
                 if fm != s.loc:
                     ev.append(f"{s.owner} {s.kind}#{s.id} forced return {s.loc}->{fm} (d={s.d})")
-        moves, post = {}, {}
+        moves, post, obs_of = {}, {}, {}
         for i in 'BR':
-            obs = Obs(self, i, t, forced[i])
+            obs = obs_of[i] = Obs(self, i, t, forced[i])
             m, p = self.policy[i].act(obs)
             m, p = dict(m), dict(p)
             if i == 'R' and 'blockade' in self.attacks:
                 m, p = self._blockade_override(m, p, forced['R'])
             moves[i], post[i] = m, p
+            self.last_war_risk[i] = war_risk(obs, m, p)     # what side i believes its plan risks (diagnostic)
         # ---- 3. resolve moves under the movement budget F_i (forced moves charged first)
         for i in 'BR':
             budget = self.F[i]
@@ -898,14 +1027,19 @@ class Game:
             h = hazard_rate(P, self.design, self.ell, S_B, S_R, pB, pR, ps)
             if h > 0 and rng.random() < 1.0 - math.exp(-h):
                 incidents.add(v)
-        for v in incidents:
+        truth = []                                          # level changes (players see them only if not hidden)
+        for v in sorted(incidents) if self.hidden else incidents:
             self.ell = min(P['L'], self.ell + 1)
-            ev.append(f"INCIDENT at {v} ({NODES[v][0]}): ell -> {self.ell}")
+            if self.hidden:
+                ev.append(f"INCIDENT at {v} ({NODES[v][0]})")
+                truth.append(f"Incident at {v}: ell -> {self.ell}")
+            else:
+                ev.append(f"INCIDENT at {v} ({NODES[v][0]}): ell -> {self.ell}")
         if not incidents:
             mu = 0.5 if (self.design == 'D3' and self.ell >= 3) else P['mu']
             if self.ell > 0 and rng.random() < mu:
                 self.ell -= 1
-                ev.append(f"Tensions ease: ell -> {self.ell}")
+                (truth if self.hidden else ev).append(f"Tensions ease: ell -> {self.ell}")
         self.n_incidents += len(incidents)
         self.last_incidents = incidents
         # ---- 6. stage payoffs g_i^t
@@ -929,13 +1063,23 @@ class Game:
             ev.append(f"*** ARMED CONFLICT (ell = L) at t={t}: both players receive -W ***")
         elif t >= self.T:
             self.done = True
+        # ---- 8. escalation beliefs: incident count and whether war broke out (F0), plus under F1 the
+        # likelihood of the incident pattern at each starting level
+        f1 = self.hidden and self.P.get('esc_filter', 'F0') != 'F0'
+        for i in 'BR':
+            lik = self.incident_lik(i, obs_of[i], counts, incidents) if f1 else None
+            self.esc_belief[i].update(len(incidents), self.war, lik)
         for text in ev:
             self.events.append((t, text))
+        for text in truth:
+            self.truth_events.append((t, text))
         self.hist.append({'t': t, 'ell': self.ell, 'share': self.control_share(), 'gB': gB, 'gR': gR,
                           'incidents': sorted(incidents), 'postures': {i: dict(self.postures[i]) for i in 'BR'},
                           'c': dict(self.c), 'counts': counts, 'uB': self.u['B'], 'uR': self.u['R'],
                           'sea': dict(self.sea), 'oilers': {i: o.loc for i, o in self.oilers.items()},
-                          'avail': {i: self.available(i) for i in 'BR'}})
+                          'avail': {i: self.available(i) for i in 'BR'},
+                          'esc_belief': {i: list(self.esc_belief[i].b) for i in 'BR'},
+                          'war_risk': dict(self.last_war_risk)})
 
     def run(self):
         while not self.done:
@@ -953,6 +1097,58 @@ class Game:
             'red_avail': statistics.fmean(h['avail']['R'] for h in self.hist) if self.hist else 0,
         }
 
+    def incident_lik(self, i, obs, counts, incidents):
+        """Filter F1: Pr(this period's incident pattern | starting level e), e = 0..L, as side i can
+        compute it: its own ships (after moves) and postures, the public sea state, and the opponent
+        counts and postures it believed when it chose its plan (true ones under 'F1x').
+        Zones where i had no ships carry no information for i and are skipped, as is an incident at a
+        zone where i believed it could not happen (the opponent was there unseen: that says nothing
+        about the level)."""
+        P, L, o = self.P, self.P['L'], OPP[i]
+        true_opp = self.P.get('esc_filter') == 'F1x'
+        lik = [1.0] * (L + 1)
+        for v in self.g.contested:
+            own = {k: counts[v].get(k, 0) for k in KINDS[i]}
+            if not any(own.values()):
+                continue
+            if true_opp:
+                opp, opp_post = {k: counts[v].get(k, 0) for k in KINDS[o]}, self.postures[o][v]
+            else:
+                opp, opp_post = obs.opp_counts(v), obs.opp_posture(v)
+            ps = [node_eval(P, self.design, e, i, own, self.postures[i][v], opp, opp_post,
+                            self.sea[REGION_OF[v]])[1] for e in range(L + 1)]
+            if v in incidents:
+                if max(ps) <= 0.0:
+                    continue
+                lik = [a * p for a, p in zip(lik, ps)]
+            else:
+                lik = [a * (1.0 - p) for a, p in zip(lik, ps)]
+        return lik
+
+    def truth(self):
+        """Evaluator view: what no player sees when esc_hidden is on."""
+        return {'ell': self.ell, 'u': dict(self.u), 'truth_events': list(self.truth_events),
+                'hist_ell': [h['ell'] for h in self.hist]}
+
+    def belief_metrics(self, i='B'):
+        """How well player i's escalation belief tracked the true level, over the periods played
+        before the game ended (war periods are left out: there the belief is exact).
+
+        mean_p_true  mean belief on the true level;  log_score  mean ln b(true level);
+        mean_abs_err mean |E_b[ell] - ell|;  brier  mean sum_e (b(e) - 1[e = ell])^2."""
+        rows = [h for h in self.hist if h['ell'] < self.P['L']]
+        if not rows:
+            return {'mean_p_true': '', 'log_score': '', 'mean_abs_err': '', 'brier': ''}
+        p_true = [h['esc_belief'][i][h['ell']] for h in rows]
+        return {
+            'mean_p_true': statistics.fmean(p_true),
+            'log_score': statistics.fmean(math.log(max(p, 1e-12)) for p in p_true),
+            'mean_abs_err': statistics.fmean(abs(sum(e * p for e, p in enumerate(h['esc_belief'][i])) - h['ell'])
+                                             for h in rows),
+            'brier': statistics.fmean(sum((p - (e == h['ell'])) ** 2 for e, p in enumerate(h['esc_belief'][i]))
+                                      for h in rows),
+        }
+
 
 # ============================================================================
 # 6.  POLICIES
@@ -965,8 +1161,42 @@ class Game:
 # returns an illegal move simply has that ship hold position.
 
 def risk_budget(eps, ell, P):
-    """Effective per-period expected-incident budget: eps scaled down as ell rises."""
+    """Effective per-period expected-incident budget: eps scaled down as ell rises.
+    For a belief b over levels: sum_e b(e) eps (1 - e/L)."""
+    if is_belief(ell):
+        return sum(w * eps * max(0.0, 1.0 - e / P['L']) for e, w in enumerate(ell))
     return eps * max(0.0, 1.0 - ell / P['L'])
+
+
+def esc_at_least(ell, k, P):
+    """The rule-based tests 'ell >= k'.  For a belief: Pr(ell >= k) >= esc_tau.  esc_tau below 1/2
+    makes a side act on the danger of a high level, not only on the most likely level."""
+    if is_belief(ell):
+        return sum(ell[k:]) >= P['esc_tau']
+    return ell >= k
+
+
+def war_risk(obs, moves, post):
+    """Pr(war this period | the player's belief and its plan) = sum_e b(e) Pr(N >= L - e | e), where
+    N is the number of incidents (independent zones) with the opponent at its believed counts and
+    last-seen postures.  Uses only the player's own information.  With ell known, b is a point mass."""
+    P, me, g, L = obs.P, obs.player, obs.graph, obs.P['L']
+    b = obs.esc_belief if obs.hidden else [1.0 if e == obs.ell else 0.0 for e in range(L + 1)]
+    cnt = Policy.planned_counts(obs, {s.id: moves.get(s.id, s.loc) for s in obs.free})
+    occupied = [v for v in g.contested if sum(cnt[v].values()) > 0]
+    total = 0.0
+    for e, w in enumerate(b):
+        if w == 0.0 or e >= L:
+            continue
+        dist = [1.0]                                    # Pr(N = n), Poisson-binomial over zones
+        for v in occupied:
+            p = node_eval(P, obs.design, e, me, cnt[v], post.get(v, 'P'), obs.opp_counts(v), obs.opp_posture(v),
+                          obs.sea_at(v))[1]
+            if p > 0.0:
+                dist = [(dist[n] if n < len(dist) else 0.0) * (1 - p) + (dist[n - 1] * p if n > 0 else 0.0)
+                        for n in range(len(dist) + 1)]
+        total += w * sum(dist[L - e:])
+    return total
 
 
 class Policy:
@@ -1042,21 +1272,21 @@ class HeuristicPolicy(Policy):
         self.name = label
 
     # posture rule for a node where we have ships
-    def _posture(self, ell, own_raw, opp_raw):
+    def _posture(self, ell, own_raw, opp_raw, P):
         if self.theta >= 0.8:
-            return 'A' if ell < 4 else 'P'
+            return 'A' if not esc_at_least(ell, 4, P) else 'P'
         if self.theta >= 0.5:
-            return 'A' if (ell <= 2 and own_raw > opp_raw) else 'P'
+            return 'A' if (not esc_at_least(ell, 3, P) and own_raw > opp_raw) else 'P'
         return 'P'
 
     def act(self, obs):
-        g, me, P, ell = obs.graph, obs.player, obs.P, obs.ell
+        g, me, P, ell = obs.graph, obs.player, obs.P, obs.esc
         w, lam, H = W_K, P['lam'], horizon_factor(P)
         V = VALUE[me]
         opp_cnt = {v: obs.opp_counts(v) for v in g.contested}
         opp_raw = {v: obs.opp_raw(v) for v in g.contested}
         targets = list(g.contested)
-        if self.theta <= 0.2 and ell >= 3:          # conservative: withdraw where opponent present
+        if self.theta <= 0.2 and esc_at_least(ell, 3, P):   # conservative: withdraw where opponent present
             targets = [v for v in targets if opp_raw[v] == 0]
         # ---- greedy allocation of free ships to target nodes
         own = {v: defaultdict(int) for v in g.contested}
@@ -1128,14 +1358,14 @@ class HeuristicPolicy(Policy):
                 moves[sid] = hop
                 pos[sid] = hop
             else:
-                pos[sid] = obs.game.ship_by_id[sid].loc
+                pos[sid] = obs.ship_by_id[sid].loc
         # ---- postures
         cnt = self.planned_counts(obs, pos)
         post = {}
         for v in g.contested:
             if sum(cnt[v].values()) > 0:
                 own_raw = sum(w[k] * n for k, n in cnt[v].items())
-                post[v] = self._posture(ell, own_raw, opp_raw[v])
+                post[v] = self._posture(ell, own_raw, opp_raw[v], P)
         # ---- escalation-risk budget: sum_v p_v <= eps
         def risk(v):
             return node_eval(P, obs.design, ell, me, cnt[v], post.get(v, 'P'), opp_cnt[v], obs.opp_posture(v),
@@ -1154,7 +1384,7 @@ class HeuristicPolicy(Policy):
             if arriving:
                 sid = arriving[-1]
                 del moves[sid]
-                pos[sid] = obs.game.ship_by_id[sid].loc
+                pos[sid] = obs.ship_by_id[sid].loc
             else:
                 here = [s for s in obs.free if pos.get(s.id, s.loc) == v and s.id not in moves]
                 if not here or len(moves) >= obs.fuel:
@@ -1192,7 +1422,7 @@ class GreedyBRPolicy(Policy):
     ROUNDS = 3
 
     def act(self, obs):
-        g, me, P, ell = obs.graph, obs.player, obs.P, obs.ell
+        g, me, P, ell = obs.graph, obs.player, obs.P, obs.esc
         lam, H, Lam, gamma = P['lam'], horizon_factor(P), P['Lambda'], P['gamma']
         V = VALUE[me]
         eps = risk_budget(P['eps'][me], ell, P)
@@ -1302,7 +1532,7 @@ def plan_value(obs, moves, post):
     """Objective of the per-period best-response problem for a plan (moves, postures):
         J = sum_v [V_v lam H phi_v - Lambda p_v] - gamma * (#moves),
     and the plan's expected incidents sum_v p_v.  Used to compare plans."""
-    g, me, P, ell = obs.graph, obs.player, obs.P, obs.ell
+    g, me, P, ell = obs.graph, obs.player, obs.P, obs.esc
     cnt = Policy.planned_counts(obs, {s.id: moves.get(s.id, s.loc) for s in obs.free})
     J, risk = -P['gamma'] * len(moves), 0.0
     for v in g.contested:
@@ -1359,7 +1589,7 @@ class MIPBREnumPolicy(Policy):
 
     def act(self, obs):
         import gurobipy as gp
-        g, me, P, ell = obs.graph, obs.player, obs.P, obs.ell
+        g, me, P, ell = obs.graph, obs.player, obs.P, obs.esc
         lam, H, Lam, gamma = P['lam'], horizon_factor(P), P['Lambda'], P['gamma']
         kinds = KINDS[me]
         eps = risk_budget(P['eps'][me], ell, P)
@@ -1426,8 +1656,7 @@ def eval_strength(P, design, ell, me, R_own, theta_own, post_me, opp_cnt, post_o
     else:
         S_B, S_R, pB, pR, shares = S_op, S_me, post_opp, post_me, (th_opp, theta_own)
     phi = (S_B - S_R) / (S_B + S_R + P['kappa'])
-    h = hazard_rate(P, design, ell, S_B, S_R, pB, pR, shares)
-    return SIGMA[me] * phi, 1.0 - math.exp(-h)
+    return SIGMA[me] * phi, incident_prob(P, design, ell, S_B, S_R, pB, pR, shares)
 
 
 class MIPBRPolicy(MIPBREnumPolicy):
@@ -1453,10 +1682,26 @@ class MIPBRPolicy(MIPBREnumPolicy):
     name = 'mip_br'
 
     def act(self, obs):
+        """Solve; with P['war_cap'] set, re-solve with the risk budget halved (up to 4 times) while the
+        plan's believed probability of war this period exceeds the cap."""
+        cap = obs.P.get('war_cap')
+        moves, post = self._solve(obs, 1.0)
+        self.last_war_risk = war_risk(obs, moves, post)
+        scale = 1.0
+        for _ in range(4 if cap is not None else 0):
+            if self.last_war_risk <= cap:
+                break
+            scale *= 0.5
+            moves, post = self._solve(obs, scale)
+            self.last_war_risk = war_risk(obs, moves, post)
+        self.last_eps_scale = scale
+        return moves, post
+
+    def _solve(self, obs, eps_scale):
         import gurobipy as gp
-        g, me, P, ell = obs.graph, obs.player, obs.P, obs.ell
+        g, me, P, ell = obs.graph, obs.player, obs.P, obs.esc
         lam, H, Lam, gamma = P['lam'], horizon_factor(P), P['Lambda'], P['gamma']
-        eps = risk_budget(P['eps'][me], ell, P)
+        eps = eps_scale * risk_budget(P['eps'][me], ell, P)
         fixed = {v: defaultdict(int) for v in g.nodes}
         for s in obs.ships:
             if s.id in obs.forced:
@@ -1748,7 +1993,7 @@ class TemplatePolicy(Policy):
         raise NotImplementedError
 
     def act(self, obs):
-        g, me, P, ell = obs.graph, obs.player, obs.P, obs.ell
+        g, me, P, ell = obs.graph, obs.player, obs.P, obs.esc
         if self.cur is None or (obs.t - 1) % self.resample == 0:
             self.cur = self.choose_template(obs)
         split, posture = TEMPLATES[self.cur]
@@ -1780,9 +2025,9 @@ class TemplatePolicy(Policy):
             open_slots[v] -= 1
             assign[sid] = v
         moves = {}
-        order = sorted(assign.items(), key=lambda kv: g.dist[me][obs.game.ship_by_id[kv[0]].loc][kv[1]])
+        order = sorted(assign.items(), key=lambda kv: g.dist[me][obs.ship_by_id[kv[0]].loc][kv[1]])
         for sid, v in order:
-            s = obs.game.ship_by_id[sid]
+            s = obs.ship_by_id[sid]
             if v == s.loc or len(moves) >= obs.fuel:
                 continue
             hop = self.next_hop(obs, s, v)
@@ -1794,7 +2039,7 @@ class TemplatePolicy(Policy):
         post = {}
         for v in g.contested:
             if sum(cnt[v].values()) > 0:
-                post[v] = posture if ell <= 3 else 'P'
+                post[v] = posture if not esc_at_least(ell, 4, P) else 'P'
         for _ in range(10):
             risks = {v: node_eval(P, obs.design, ell, me, cnt[v], post[v], obs.opp_counts(v), obs.opp_posture(v),
                                   obs.sea_at(v))[1] for v in post}
@@ -1929,7 +2174,7 @@ def use_replay(game):
     (no recording for this setup and seed, Red attacks on, or more turns than the recorded year)."""
     if 'mip_br' not in game.policy_names.values():
         return None
-    if game.attacks or game.T > PARAMS['T']:
+    if game.attacks or game.T > PARAMS['T'] or game.hidden:      # recordings are of the observed-ell model
         return False
     eps = game.P['eps']
     rec = load_replay(replay_path(game.policy_names['B'], game.policy_names['R'], game.design, game.weather,
@@ -1994,7 +2239,7 @@ def plain_events(texts):
         elif x.startswith('Storm closes region'):
             r = x.split()[3]
             out.append(x.replace(f'region {r}', f"the {REGION_NAMES.get(r, r)}").replace(' periods', ' turns'))
-        elif x.startswith('INCIDENT'):
+        elif x.startswith(('INCIDENT', 'Incident at')):
             out.append(x.replace('INCIDENT at', 'Incident at').replace('ell ->', 'escalation rises to'))
         else:
             out.append(x.replace('Tensions ease: ell ->', 'Tensions ease: escalation falls to').replace(' periods', ' turns')
@@ -2104,6 +2349,7 @@ def launch_gui():
             self.game = None
             self.running = False
             self.n_events_shown = 0
+            self.last_turn_shown = 0
             self.batch_job = None
             self.anim_job = None
             self._build()
@@ -2146,6 +2392,8 @@ def launch_gui():
             self.v_T = tk.StringVar(value=str(PARAMS['T']))
             self.v_view = tk.StringVar(value='truth')
             self.v_attacks = {a: tk.BooleanVar(value=False) for a in ATTACKS}
+            self.v_hidden = tk.BooleanVar(value=False)
+            self.v_f1 = tk.BooleanVar(value=True)
             row = 0
             for label, var, vals in (('Blue plan', self.v_blue, list(POLICY_LABELS.values())),
                                      ('Red plan', self.v_red, list(POLICY_LABELS.values())),
@@ -2166,6 +2414,13 @@ def launch_gui():
             af.grid(row=row, column=1, columnspan=3, sticky='w')
             for k, a in enumerate(ATTACKS):
                 ttk.Checkbutton(af, text=a.capitalize(), variable=self.v_attacks[a]).grid(row=k // 2, column=k % 2, sticky='w', padx=2)
+            row += 1
+            ttk.Label(sc, text='Escalation').grid(row=row, column=0, sticky='w', padx=4, pady=2)
+            ttk.Checkbutton(sc, text='Hidden (sides only see incidents)', variable=self.v_hidden).grid(
+                row=row, column=1, columnspan=3, sticky='w', padx=2)
+            row += 1
+            ttk.Checkbutton(sc, text='Beliefs also use where incidents did not happen', variable=self.v_f1).grid(
+                row=row, column=1, columnspan=3, sticky='w', padx=2)
             row += 1
             ttk.Label(sc, text='Random seed').grid(row=row, column=0, sticky='w', padx=4, pady=2)
             ttk.Entry(sc, textvariable=self.v_seed, width=7).grid(row=row, column=1, sticky='w')
@@ -2234,12 +2489,14 @@ def launch_gui():
             return dict(blue=key(POLICY_LABELS, self.v_blue), red=key(POLICY_LABELS, self.v_red),
                         design=key(DESIGN_LABELS, self.v_design), attacks=attacks, seed=seed, T=T,
                         weather=key(WEATHER_LABELS, self.v_weather),
-                        epsB=float(self.v_epsB.get()), epsR=float(self.v_epsR.get()))
+                        epsB=float(self.v_epsB.get()), epsR=float(self.v_epsR.get()),
+                        hidden=bool(self.v_hidden.get()), esc_filter='F1' if self.v_f1.get() else 'F0')
 
         @staticmethod
         def _new_game(s, seed):
             return Game(s['blue'], s['red'], s['design'], s['attacks'], seed=seed, T=s['T'], weather=s['weather'],
-                        params={'eps': {'B': s['epsB'], 'R': s['epsR']}})
+                        params={'eps': {'B': s['epsB'], 'R': s['epsR']}, 'esc_hidden': s['hidden'],
+                                                       'esc_filter': s.get('esc_filter', 'F0')})
 
         def reset(self):
             if self.anim_job:
@@ -2251,13 +2508,16 @@ def launch_gui():
             self.game = self._new_game(s, s['seed'])
             replay = use_replay(self.game)
             self.n_events_shown = 0
+            self.last_turn_shown = 0
             self.log.configure(state='normal')
             self.log.delete('1.0', 'end')
             self.log.configure(state='disabled')
             self.append_log(f"New game: Blue plays '{POLICY_LABELS[s['blue']]}', Red plays '{POLICY_LABELS[s['red']]}', "
                             f"{DESIGN_LABELS[s['design']]}, {WEATHER_LABELS[s['weather']]}, "
                             f"risk budgets Blue {s['epsB']:g} Red {s['epsR']:g}, "
-                            f"Red attacks: {', '.join(s['attacks']) or 'none'}, seed {s['seed']}, {s['T']} turns")
+                            f"Red attacks: {', '.join(s['attacks']) or 'none'}, seed {s['seed']}, {s['T']} turns"
+                            + (", escalation hidden (belief filter " + s.get('esc_filter', 'F0') + ")"
+                               if s['hidden'] else ""))
             if replay:
                 self.append_log("Playing back the stored Best response (MIP) decisions for this setup and seed "
                                 "(the same game as in the results).")
@@ -2363,7 +2623,7 @@ def launch_gui():
             except ValueError:
                 n = 200
             seeds = range(s['seed'], s['seed'] + n)
-            store = stored_games() if not s['attacks'] and s['T'] == PARAMS['T'] else {}
+            store = stored_games() if not s['attacks'] and s['T'] == PARAMS['T'] and not s['hidden'] else {}
             rows, missing = [], []
             for sd in seeds:
                 r = store.get(stored_key(s['blue'], s['red'], s['design'], s['weather'], s['epsB'], s['epsR'], sd))
@@ -2430,17 +2690,29 @@ def launch_gui():
         def redraw(self):
             gm = self.game
             new = gm.events[self.n_events_shown:]
-            for t in sorted({t for t, _ in new}):
+            hidden_new = [(t, x) for t, x in gm.truth_events if t > (self.last_turn_shown or 0)]
+            for t in sorted({t for t, _ in new} | {t for t, _ in hidden_new}):
                 for text in plain_events([x for tt, x in new if tt == t]):
                     self.append_log(f"Turn {t:2d}: {text}")
+                for text in plain_events([x for tt, x in hidden_new if tt == t]):
+                    self.append_log(f"Turn {t:2d}: [hidden from both sides] {text}")
             self.n_events_shown = len(gm.events)
+            self.last_turn_shown = gm.t
             self.draw_map()
             self.draw_ladder()
             self.draw_timeseries()
             war = '  *** WAR ***' if gm.war else ('  (end)' if gm.done else '')
+            view = self.v_view.get()
+            if gm.hidden and view in 'BR':
+                b = gm.esc_belief[view]
+                esc = (f"{'Blue' if view == 'B' else 'Red'} believes escalation is {b.mode()} "
+                       f"(mean {b.mean():.1f}, P(3 or more) {b.prob_at_least(3):.0%})   ")
+                score = ''                          # stage payoffs include -eta * ell, so scores would reveal it
+            else:
+                esc = f"Escalation {gm.ell} ({LEVEL_NAMES[gm.ell]})   "
+                score = f"Score: Blue {gm.u['B']:.0f}, Red {gm.u['R']:.0f}   "
             self.status.configure(
-                text=f"Turn {gm.t}/{gm.T}   Escalation {gm.ell} ({LEVEL_NAMES[gm.ell]})   "
-                     f"Score: Blue {gm.u['B']:.0f}, Red {gm.u['R']:.0f}   "
+                text=f"Turn {gm.t}/{gm.T}   {esc}{score}"
                      f"Blue control {gm.control_share():+.2f}   Incidents {gm.n_incidents}{war}",
                 fg='#b00' if gm.war else 'black')
 
@@ -2551,13 +2823,26 @@ def launch_gui():
             cv, gm = self.ladder, self.game
             cv.delete('all')
             L = gm.P['L']
-            cv.create_text(55, 10, text='Escalation level', font=('TkDefaultFont', 9, 'bold'))
+            view = self.v_view.get()
             names = LEVEL_NAMES
+            hues = ['#dff5df', '#f3f7c9', '#ffe6b3', '#ffc999', '#ff9f80', '#e53935']
+            if gm.hidden and view in 'BR':
+                # the side's belief: each rung filled in proportion to its probability
+                b = gm.esc_belief[view].b
+                cv.create_text(55, 10, text=f"{'Blue' if view == 'B' else 'Red'}'s belief", font=('TkDefaultFont', 9, 'bold'))
+                for lvl in range(L + 1):
+                    y1 = 160 - lvl * 23
+                    y0 = y1 - 20
+                    cv.create_rectangle(12, y0, 98, y1, fill='white', outline='black')
+                    if b[lvl] > 0.005:
+                        cv.create_rectangle(12, y0, 12 + 86 * b[lvl], y1, fill=hues[lvl], outline='')
+                    cv.create_text(55, (y0 + y1) / 2, text=f"{lvl}  {b[lvl]:.0%}", font=('TkDefaultFont', 8))
+                return
+            cv.create_text(55, 10, text='Escalation level', font=('TkDefaultFont', 9, 'bold'))
             for lvl in range(L + 1):
                 y1 = 160 - lvl * 23
                 y0 = y1 - 20
-                hue = ['#dff5df', '#f3f7c9', '#ffe6b3', '#ffc999', '#ff9f80', '#e53935'][lvl]
-                cv.create_rectangle(12, y0, 98, y1, fill=hue if lvl <= gm.ell else 'white',
+                cv.create_rectangle(12, y0, 98, y1, fill=hues[lvl] if lvl <= gm.ell else 'white',
                                     outline='black', width=3 if lvl == gm.ell else 1)
                 cv.create_text(55, (y0 + y1) / 2, text=f"{lvl} {names[lvl] if lvl < len(names) else ''}", font=('TkDefaultFont', 8))
 
@@ -2579,22 +2864,31 @@ def launch_gui():
             cv.create_text(x0, y1 + 4, text='turn 0', anchor='n', font=('TkDefaultFont', 8))
             cv.create_text(x1, y1 + 4, text=f'turn {T}', anchor='ne', font=('TkDefaultFont', 8))
             cv.create_text(x0 + 6, y0 + 2, anchor='nw', fill=BLUE, font=('TkDefaultFont', 8, 'bold'), text='Blue control share (-1 to +1)')
+            view = self.v_view.get()
+            believed = gm.hidden and view in 'BR'
             cv.create_text(x0 + 190, y0 + 2, anchor='nw', fill='#ff8c00', font=('TkDefaultFont', 8, 'bold'),
-                           text='Escalation (bottom = 0, top = war); dots = incidents')
+                           text=("Escalation " + ("believed by " + ('Blue' if view == 'B' else 'Red') + " (mean)"
+                                                  if believed else "") + " (bottom = 0, top = war); dots = incidents"))
 
             def X(t):
                 return x0 + (x1 - x0) * t / T
             share0 = sum(VALUE['B'][v] * C0[v] for v in C0) / sum(VALUE['B'].values())
             share = [(0, share0)]
             share += [(h['t'], h['share']) for h in gm.hist]
-            ells = [(0, gm.P['ell0'])] + [(h['t'], h['ell']) for h in gm.hist]
+            if believed:
+                ells = [(0, gm.P['ell0'])] + [(h['t'], sum(e * p for e, p in enumerate(h['esc_belief'][view])))
+                                              for h in gm.hist]
+            else:
+                ells = [(0, gm.P['ell0'])] + [(h['t'], h['ell']) for h in gm.hist]
+            lvl_at = dict(ells)
             if len(share) > 1:
                 cv.create_line([(X(t), mid - s * (y1 - y0) / 2) for t, s in share], fill=BLUE, width=2)
                 cv.create_line([(X(t), y1 - e / gm.P['L'] * (y1 - y0)) for t, e in ells], fill='#ff8c00', width=2)
             for h in gm.hist:
                 if h['incidents']:
-                    cv.create_oval(X(h['t']) - 3, y1 - h['ell'] / gm.P['L'] * (y1 - y0) - 3,
-                                   X(h['t']) + 3, y1 - h['ell'] / gm.P['L'] * (y1 - y0) + 3, fill='#ff8c00', outline='')
+                    e = lvl_at[h['t']]
+                    cv.create_oval(X(h['t']) - 3, y1 - e / gm.P['L'] * (y1 - y0) - 3,
+                                   X(h['t']) + 3, y1 - e / gm.P['L'] * (y1 - y0) + 3, fill='#ff8c00', outline='')
 
     root = tk.Tk()
     root.app = App(root)
@@ -2653,9 +2947,9 @@ def format_summary(s):
             f"  incidents {s['incidents']:.2f} | moves B {s['blue_fuel']:.1f} R {s['red_fuel']:.1f}")
 
 
-def print_trace(blue, red, design, attacks, seed, T, weather='calm'):
-    """Per-period text trace of one game."""
-    gm = Game(blue, red, design, attacks, seed=seed, T=T, weather=weather)
+def print_trace(blue, red, design, attacks, seed, T, weather='calm', params=None):
+    """Per-period text trace of one game (evaluator view: true ell, and Blue's belief when it is hidden)."""
+    gm = Game(blue, red, design, attacks, seed=seed, T=T, weather=weather, params=params)
     print(f"Trace: Blue={blue} Red={red} design={design} attacks={sorted(gm.attacks) or 'none'} seed={seed} T={gm.T}")
     print(f"t=0  ell={gm.ell}  c: " + ' '.join(f"{v}{gm.c[v]:+.2f}" for v in gm.g.contested))
     while not gm.done:
@@ -2672,8 +2966,9 @@ def print_trace(blue, red, design, attacks, seed, T, weather='calm'):
                     parts.append(f"{v}:{'/'.join(ks)}{tag}")
             return ' '.join(parts)
         sea = ' '.join(f"{r}:{st}" for r, st in h['sea'].items() if st != 'calm') or 'calm'
+        bel = ('  b_B=[' + ' '.join(f"{p:.2f}" for p in h['esc_belief']['B'][:-1]) + ']') if gm.hidden else ''
         print(f"t={h['t']:<2d} ell={h['ell']} inc={','.join(h['incidents']) or '-':<8s} gB={h['gB']:7.2f} gR={h['gR']:7.2f}"
-              f"  sea {sea}")
+              f"  sea {sea}{bel}")
         print(f"     Blue: {side('B')}")
         print(f"     Red : {side('R')}")
         print("     c   : " + ' '.join(f"{v}{h['c'][v]:+.2f}" for v in gm.g.contested))
@@ -2762,7 +3057,15 @@ def main(argv=None):
     ap.add_argument('--seed', type=int, default=0, help='seed for --trace (and first seed of a batch)')
     ap.add_argument('--seeds', type=int, default=100, help='number of seeds for --batch')
     ap.add_argument('--T', type=int, default=None, help='horizon in periods (default 60)')
+    ap.add_argument('--hidden', action='store_true',
+                    help='hide the escalation level from both sides (they act on a belief built from incidents)')
+    ap.add_argument('--filter', default=None, choices=('F0', 'F1', 'F1x'),
+                    help='escalation belief filter with --hidden (F1 also uses where incidents did and did not '
+                         'happen; F1x is F1 with the true opponent positions, a diagnostic)')
     args = ap.parse_args(argv)
+    params = {'esc_hidden': True} if args.hidden else None
+    if params and args.filter:
+        params['esc_filter'] = args.filter
     attacks = parse_attacks(args.attacks)
     if args.epsB is not None:
         PARAMS['eps'] = dict(PARAMS['eps'], B=args.epsB)
@@ -2771,11 +3074,11 @@ def main(argv=None):
     if args.equilibrium:
         print_equilibrium()
     elif args.trace:
-        print_trace(args.blue, args.red, args.design, attacks, args.seed, args.T or 10, args.weather)
+        print_trace(args.blue, args.red, args.design, attacks, args.seed, args.T or 10, args.weather, params)
     elif args.batch:
         t0 = time.time()
         s, _ = run_batch(args.blue, args.red, args.design, attacks, seeds=args.seeds, T=args.T, seed0=args.seed,
-                         weather=args.weather)
+                         weather=args.weather, params=params)
         print(format_summary(s))
         print(f"({time.time() - t0:.1f}s)")
     else:

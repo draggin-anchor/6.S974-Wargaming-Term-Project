@@ -200,6 +200,22 @@ MIP option list, rule-based policy logic, GUI posture menu; §3.3, §3.4 and §4
 specific zone, not a region); effect form (a) or (b); does a FONOP last one period (a transit) or can
 it be held?
 
+**Decided (Tate, Nov 20; to build with the hidden-escalation belief):**
+
+- *Zones:* F is allowed at PAR, STS and SCB (region S). Elsewhere Blue keeps {P, A}. Sean to confirm
+  the legal basis for each zone and add citations.
+- *Effect:* form (a). While Blue is in F at $v$, control moves toward $\max\{\phi_v,0\}$, and F has
+  no strength multiplier ($\phi_v$ is computed at patrol strength). So F helps when Blue is
+  outnumbered (Red cannot gain ground), and A is better when Blue is locally stronger. No new payoff
+  weight.
+- *Duration:* F can be held. It is a posture chosen each period at each zone where Blue has ships, like
+  P and A; no cooldown state.
+- *Hazard and Red response:* F alone adds $h_\text{F} = 0.5\,h_{A,\text{navy}}^\B$ (0.015 before
+  `h_scale`). If Red asserts against F, an interaction term $h_{\text{F}\times\As} = h_{A,\text{navy}}^\B$
+  (0.03) is added on top. A typed Red that sees F on scene raises its assert rate at $v$ from
+  $\theta_v$ to $\theta^\text{F}_v = \min(1, \theta_v + 0.2)$. All three numbers are assumptions for
+  the sensitivity sweep (idea 7).
+
 ## 5. Separate CCG/militia ports
 
 **What it is:** CCG and militia hulls now share Red's two home ports (Ningbo and Sanya, footnoted as

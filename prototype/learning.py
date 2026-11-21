@@ -330,7 +330,7 @@ def _option_fn(obs, v, opp_cnt, q_v, own_theta):
     """Value and risk of own levels (n navy, c coast guard units) at v with own posture p,
     in expectation over the opponent's posture (assert with probability q_v).
     p = 'T' means the own posture is typed: assert with probability own_theta."""
-    P, me, ell = obs.P, obs.player, obs.ell
+    P, me, ell = obs.P, obs.player, obs.esc
     lam, Hf, Lam = P['lam'], W.horizon_factor(P), P['Lambda']
     sea = obs.sea_at(v)
 
@@ -422,7 +422,7 @@ def solve_plan(obs, q, own_type, H, m=None, commit=False, coarse=None):
     planned levels, moves and postures in every period (to evaluate the plan under other rates)."""
     import gurobipy as gp
     P, me, g = obs.P, obs.player, obs.graph
-    eps = W.risk_budget(P['eps'][me], obs.ell, P)
+    eps = W.risk_budget(P['eps'][me], obs.esc, P)
     delta, gamma = P['delta'], P['gamma']
     fixed = _fixed(obs, H)
     if coarse is None:
@@ -442,7 +442,7 @@ def solve_plan(obs, q, own_type, H, m=None, commit=False, coarse=None):
             m_.addConstr(moves_tau <= obs.fuel)
         else:                                   # later periods: forced returns inside the plan may need more
             over = m_.addVar(lb=0)
-            m_.addConstr(moves_tau <= max(0, obs.game.F[me] - forced_moves) + over)
+            m_.addConstr(moves_tau <= max(0, obs.F_total - forced_moves) + over)
             obj += -50.0 * disc * over
         obj += -gamma * disc * moves_tau
         opp_cnt_all = _opp_counts(obs, m, tau)
@@ -556,7 +556,7 @@ def plan_value_true(obs, plan, q, own_type, H, m=None):
     """The MIP objective of a solved plan (its levels, moves and postures in every period) when the
     option values and risks are computed from rates q instead of the rates the plan was made with."""
     P, me, g = obs.P, obs.player, obs.graph
-    eps = W.risk_budget(P['eps'][me], obs.ell, P)
+    eps = W.risk_budget(P['eps'][me], obs.esc, P)
     delta, gamma = P['delta'], P['gamma']
     total = 0.0
     for tau in range(H):
