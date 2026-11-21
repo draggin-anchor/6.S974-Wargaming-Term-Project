@@ -1,0 +1,46 @@
+% !TEX root = updates.tex
+\begin{addblock}
+\subsection{Hidden escalation: each side's belief over the level}\label{sec:hidden}
+In the game so far both sides see $\ell^t$. In practice neither government knows exactly how close the crisis is to
+war. It sees incidents, not the level. As an option (\texttt{--hidden}; off by default, which reproduces every other
+result exactly) we remove $\ell^t$ from both players' observations. The engine still runs the true level with the same
+hazard \eqref{eq:hazard}, escalation rule and payoffs \eqref{eq:stage}--\eqref{eq:payoff}. Each player instead sees the
+zones where incidents happened, $I^t\subseteq\C$ (public, $N^t=|I^t|$), and whether war has broken out. Its stage
+payoffs are not shown to it during play. Against a fixed Red policy, Blue then faces a partially observable Markov
+decision process (POMDP) in $\ell$ as well as in Red's positions. With both sides adapting, it is a partially
+observable stochastic game.
+
+\textbf{Belief:} player $i$ holds $b^t_i(e)=\Pr(\ell^t=e\mid\text{$i$'s history})$, $e=0,\dots,L$, starting as a point
+mass at $\ell^1$. Each period it is updated in the same order as the game:
+\begin{align*}
+&\text{(1) evidence:} && \tilde b(e)\propto b^t_i(e)\,\psi^t_i(e),\\
+&\text{(2) transition:} && b'(e')=\textstyle\sum_e\tilde b(e)\,Q(e'\mid e,N^t),\qquad
+Q(e'\mid e,N)=\begin{cases}\1[e'=\min(L,e+N)] & N\ge1,\\ \mu(e)\,\1[e'=e-1]+(1-\mu(e))\,\1[e'=e] & N=0,\end{cases}\\
+&\text{(3) no war:} && b^{t+1}_i(e)\propto b'(e)\,\1[e<L]\quad\text{(a point mass at $L$ if war broke out)},
+\end{align*}
+with $\mu(e)$ as in Table~\ref{tab:params} ($\mu(0)=0$). Filter \textbf{F0} sets $\psi\equiv1$. It uses only the
+incident count and ``no war yet'', and both sides hold the same belief. Filter \textbf{F1} also uses where incidents did
+and did not happen, since a higher level makes every incident likelier. Over the zones $\C_i$ where $i$ has ships,
+\[
+\psi^t_i(e)=\prod_{v\in\C_i}\hat\rho_v(e)^{\1[v\in I^t]}\big(1-\hat\rho_v(e)\big)^{\1[v\notin I^t]},
+\]
+where $\hat\rho_v(e)$ is the incident probability of \eqref{eq:hazard} at level $e$, computed from $i$'s own ships and
+postures and its believed opponent counts and postures. Under F1 the two sides' beliefs differ. The filters draw no
+random numbers, so games stay on common random numbers. We checked both against brute-force enumeration of every
+path of the level (agreement to $10^{-15}$).
+
+\textbf{Deciding with a belief:} wherever a policy used $\ell^t$ it now averages over the levels. Each level is
+evaluated separately, never at the mean level, because the hazard is not linear in $\ell$ (D3 also switches at $\ell=3$):
+\[
+\bar\rho_v=\textstyle\sum_e b(e)\big(1-e^{-h_v(e)}\big),\qquad
+\bar\varepsilon_i=\sum_e b(e)\,\varepsilon_i\,(1-e/L).
+\]
+The MIP of \S\ref{sec:mip} keeps its form and size. $\bar\rho_v$ replaces $\rho_v$ in the option values and in the
+risk budget, whose right side becomes $\bar\varepsilon_i+\xi$. A belief is a point mass at the true level when $\ell$
+is seen, which gives back the original MIP. In the rule-based and template policies a test $\ell\ge k$ becomes
+$\Pr_b(\ell\ge k)\ge\tau$, with threshold $\tau=0.25$. We also log each plan's believed chance of war this period,
+$\sum_{e<L}b(e)\Pr(N\ge L-e\mid e)$, with $N$ the number of incidents (independent zones at the believed opponent
+positions). An optional cap on it makes MIP-BR solve again with half the budget, up to four times.
+\textbf{What this is not:} policies still look one period ahead on the current belief. No one plans to learn about
+the level, and Red does not model Blue's belief.
+\end{addblock}
