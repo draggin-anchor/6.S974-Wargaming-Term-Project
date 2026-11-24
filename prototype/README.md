@@ -27,11 +27,11 @@ Outputs go to `results/` (CSV and markdown tables) and `results/figures/`.
 
 | Option | Values |
 |---|---|
-| `--blue`, `--red` | `random` (benchmark), `conservative` / `moderate` / `aggressive` (rule-based), `greedy_br` (heuristic for the MIP), `mip_br` (exact MIP best response), `equilibrium` (pure Nash equilibrium of the template game), `maximin` (maximin mixed strategy of the template game) |
+| `--blue`, `--red` | `random` (benchmark), `rollout` (lookahead by simulation, `rollout.py`), `conservative` / `moderate` / `aggressive` (rule-based), `greedy_br` (heuristic for the MIP), `mip_br` (exact MIP best response), `equilibrium` (pure Nash equilibrium of the template game), `maximin` (maximin mixed strategy of the template game) |
 | `--epsB`, `--epsR` | escalation-risk budget of `greedy_br` / `mip_br` (expected incidents per period; default 0.15). Conservative / moderate / aggressive = 0.05 / 0.15 / 0.40 |
 | `--weather` | `calm`, `nominal`, `typhoon`, `extreme` (scenario omega: storm and rough-sea frequencies) |
 | `--design` | `D0` baseline, `D1` dispersed basing (Subic Bay port), `D2` redundant sensing, `D3` de-escalation measures |
-| `--attacks` | `jamming`, `blockade`, `deception` (implemented for Workshop 2; not used in the Workshop 1 results) |
+| `--attacks` | `jamming` (Blue detection halved in one region, periods 60-120), `blockade` (CCG hold a zone and close its edges to Blue), `deception` (two false contacts a period). Targets are `P['jam_target']`, `P['blockade_station']` / `P['blockade_zones']`, `P['deception_target']`; `attack_experiments.py` lets Red pick the worst target for Blue |
 | `--hidden` | hide the escalation level from both sides (Workshop 2 belief extension, phase 1). Each side keeps a belief over the level from public incident reports (`EscalationBelief`, filter F0 by default: incident counts and "no war yet", no hazard evidence; see `--filter`). Policies act on the whole belief: incident probabilities and the risk budget are averaged over the levels, rule-based tests `ell >= k` become Pr(ell >= k) >= `esc_tau` (0.25), and every plan's believed probability of war this turn is logged (`hist[t]['war_risk']`; `P['war_cap']` optionally makes MIP-BR re-solve with a tighter budget above a cap). The engine keeps the true level; scores and level changes are evaluator-only. Off by default, which reproduces every earlier result. Also a checkbox in the GUI; recordings and stored games are not used when it is on |
 | `--filter` | belief filter with `--hidden`: `F0` (incident counts and "no war yet" only), `F1` (also the likelihood of where incidents did and did not happen at each level, from the side's own ships and postures and its believed opponent counts and postures; the two sides' beliefs then differ), `F1x` (F1 with the true opponent positions, a diagnostic upper bound). `P['esc_filter']`; the GUI checkbox "Beliefs also use where incidents did not happen" picks F1 |
 | `--seed`, `--seeds`, `--T` | first seed, number of seeds, horizon in periods (1 period = 2 days, default 60) |
@@ -69,3 +69,13 @@ the Workshop 2 setups) and plays only the missing ones live, in the background. 
 4 observations, 5 game engine (`Game.step` is the sequence of play), 6 policies (rule-based, greedy, `MIPBRPolicy`),
 7 template game (`MetaGame`: best responses, dominance, pure NE, maximin LP, CE LP) and template policies,
 8 batch runs and reports, 9 command line, 10 GUI.
+
+## Deliverable 3 experiments
+
+| Script | What it plays | Store |
+|---|---|---|
+| `rollout.py` | the `rollout` policy: candidate plans for this period (MIP-BR, MIP-BR with patrol only, MIP-BR at half the risk budget, greedy, hold), each scored by simulating 10 periods with the greedy rule for both sides on 8 sampled futures, plus the last stage payoff held to the end of the year. `python3 rollout.py smoke 4` times a few turns | - |
+| `attack_experiments.py` | rollout against MIP-BR, every Blue policy and designs D1-D3 under each attack at Red's worst target (screened on 40 separate seeds), and `breakeven` (D3 break-even cost from the Workshop 2 suite) | `results_w2/attacks/` |
+| `adapt_experiments.py` | learning Blue against a Red whose type switches from South to North at period 90, with two forgetting variants | `results_w2/adapt/` |
+
+Each has `plan`, `worker` (cluster job, see `cluster/README.md`) and `tables` (markdown in `results_w2/`).

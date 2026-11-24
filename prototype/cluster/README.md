@@ -75,3 +75,48 @@ The Workshop 2 suite (12,400 games, 200 per setup) ran on about 260 workers (64 
 the rest on `mit_preemptable`). It started at 11:15 PM and was complete by 9:44 AM the next morning.
 About 1,000 games finished in the first 40 minutes. An Engaging node plays a year of MIP-BR against
 MIP-BR in a few minutes, against 30 to 40 minutes on a 4-core cloud machine.
+
+## Rollout, attacks and a Red that changes type (Deliverable 3)
+
+Two more stores, played the same way: `results_w2/attacks` (attack_experiments.py: rollout games,
+attack screen, attack results) and `results_w2/adapt` (adapt_experiments.py: learning games where Red
+changes type at period 90). Every worker of `attacks.sbatch` first plays the rollout games and the
+screen. The attack results are listed once the screen of a setup is complete, so a worker with nothing
+left to claim waits ten minutes and looks again. It stops when every game is stored.
+
+Test both workers before submitting (short games, a few seconds each):
+
+```
+cd ~/wargame/prototype && git pull
+RESULTS=/tmp/wt ATTACK_T=2 SEEDS=2 SCREEN_SEEDS=2 ~/wargame-env/bin/python -c "
+import attack_experiments as A
+A.SETUPS = [('greedy_br', 'mip_br', 'D0')]; A.ROLLOUT = [('rollout', 'moderate', 'D0')]
+A.TARGETS = {'jamming': ['default', 'N'], 'blockade': ['default', 'LUZ'], 'deception': ['default', 'TWN']}
+A.worker(); A.plan(); A.tables()"
+RESULTS=/tmp/wt ADAPT_T=3 ADAPT_SWITCH=2 SEEDS=1 ~/wargame-env/bin/python -c "
+import adapt_experiments as D
+D.BLUE_RULES = ['myopic', 'thompson_forget']; D.worker(); D.plan()"
+rm -rf /tmp/wt
+```
+
+Submit (both can run next to the learning games; the scheduler shares the cores):
+
+```
+cd ~/wargame/prototype && mkdir -p logs
+A1=$(sbatch --parsable --array=0-63 cluster/attacks.sbatch)
+sbatch --array=0-63 --dependency=afterany:$A1 cluster/attacks.sbatch
+sbatch --array=0-149 -p mit_preemptable --requeue cluster/attacks.sbatch
+sbatch --array=0-99 -p mit_preemptable --requeue cluster/adapt.sbatch
+```
+
+Progress and fetch:
+
+```
+RESULTS=results_w2 ~/wargame-env/bin/python attack_experiments.py plan
+RESULTS=results_w2 ~/wargame-env/bin/python adapt_experiments.py plan
+tar czf ~/w2extra.tgz results_w2/attacks/*.csv results_w2/adapt/*.csv     # on Engaging
+scp KERB@orcd-login.mit.edu:w2extra.tgz ~/Desktop/                         # on the Mac
+```
+
+Sizes: attacks 13,720 games (400 rollout, 7,920 screen on 40 seeds, 5,400 results on 200 seeds),
+adapt 2,000 games (7 Blue rules with the switch, 3 without, 200 seeds).

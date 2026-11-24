@@ -107,7 +107,12 @@ PARAMS = {
     # design (resilient redesign) nominal-efficiency cost charged to Blue per period
     'design_cost': {'D0': 0.0, 'D1': 0.3, 'D2': 0.5, 'D3': 0.0},
     # attacks (implemented for Workshop 2; not used in the Workshop 1 results)
-    'jam_start': 20, 'jam_end': 40, 'deception_contacts': 2,
+    # jamming covers the middle third of the game (Workshop 1: periods 20-40 of 60; one-year game: 60-120)
+    'jam_start': 60, 'jam_end': 120, 'deception_contacts': 2,
+    # attack targets (None = the default rule: jam Red's strongest region, blockade at SCB with
+    # STS also closed, phantom contacts in random zones).  attack_experiments.py sets them to find
+    # the target that hurts Blue most.
+    'jam_target': None, 'blockade_station': 'SCB', 'blockade_zones': ('SCB', 'STS'), 'deception_target': None,
     # weather: storms last storm_len periods; rough seas scale CCG strength and detection
     'storm_len': 3, 'rough_small': 0.5, 'rough_q': 0.7,
     # Workshop 2 readiness.  Maintenance: a ship operates maint_every periods, then spends
@@ -215,7 +220,7 @@ NATION_PORTS = {'US': ['YOK', 'GUA'], 'JP': ['YOK', 'SAS', 'ISG'], 'PH': ['PHL']
                 'CN': ['QDO', 'NBO', 'SAN'], 'KP': ['NAM']}
 D1_EXTRA_PORTS = {'US': ['PHL', 'SAS']}
 POLICY_NAMES = ['random', 'conservative', 'moderate', 'aggressive', 'greedy_br', 'mip_br',
-                'equilibrium', 'maximin']
+                'equilibrium', 'maximin', 'rollout']
 DESIGNS = ['D0', 'D1', 'D2', 'D3']
 ATTACKS = ['jamming', 'blockade', 'deception']
 
@@ -830,26 +835,28 @@ class Game:
             # Red deception: phantom contacts injected into Blue's picture
             for _ in range(self.P['deception_contacts']):
                 v = self.rng.choice(self.g.contested)
+                v = self.P.get('deception_target') or v        # targeted attack: every contact in one zone
                 kind = self.rng.choice(KINDS['R'])
                 self.belief['B'][v][kind] += 1
                 self.belief['B'][v]['age'] = 0
 
     def _blockade_override(self, moves, post, forced):
-        """Blockade attack: Red keeps a two-hull CCG detachment asserting at SCB."""
-        g = self.g
+        """Blockade attack: Red keeps a two-hull CCG detachment asserting at its station zone
+        (P['blockade_station'], Scarborough Shoal by default)."""
+        g, z = self.g, self.P.get('blockade_station', 'SCB')
         ccg = [s for s in self.ships if s.owner == 'R' and s.kind == 'CCG' and s.id not in forced]
-        at = [s for s in ccg if s.loc == 'SCB']
+        at = [s for s in ccg if s.loc == z]
         for s in at:
             moves.pop(s.id, None)                           # hold station
         need = 2 - len(at)
         if need > 0:
-            cands = [s for s in ccg if s.loc != 'SCB' and self.reach_ok(s, 'SCB')]
-            cands.sort(key=lambda s: g.dist['R'][s.loc]['SCB'])
+            cands = [s for s in ccg if s.loc != z and self.reach_ok(s, z)]
+            cands.sort(key=lambda s: g.dist['R'][s.loc][z])
             for s in cands[:need]:
-                hops = [w for w in self.legal_dests(s) if g.dist['R'][w]['SCB'] < g.dist['R'][s.loc]['SCB']]
+                hops = [w for w in self.legal_dests(s) if g.dist['R'][w][z] < g.dist['R'][s.loc][z]]
                 if hops:
                     moves[s.id] = hops[0]
-        post['SCB'] = 'A'
+        post[z] = 'A'
         return moves, post
 
     # ------------------------------------------------------------- readiness
@@ -921,7 +928,14 @@ class Game:
         """Advance one period (the transition s^t -> s^{t+1})."""
         if self.done:
             return
-        P, g, rng = self.P, self.g, self.rng
+        t, ev, forced = self.begin_period()
+        moves, post, obs_of = self.decide(t, forced)
+        self.end_period(t, ev, forced, moves, post, obs_of)
+
+    def begin_period(self):
+        """Steps 0-1 of a period and the forced returns: everything before the players decide.
+        (step() is begin_period, decide, end_period.  rollout.py stops a copy of the game here.)"""
+        P, g = self.P, self.g
         t = self.t + 1
         ev = []
         # ---- 0. Nature: sea state per region (storms persist storm_len periods and close the region)
@@ -942,7 +956,7 @@ class Game:
                 self.sea[r] = 'rough' if u2 < self.wx['p_rough'] else 'calm'
         self.blocked = set()
         if 'blockade' in self.attacks:
-            for v in ('SCB', 'STS'):
+            for v in P.get('blockade_zones', ('SCB', 'STS')):
                 if self.postures['R'].get(v) == 'A' and any(s.kind == 'CCG' for s in self.ships_at(v, 'R')):
                     self.blocked.add(v)
             if self.blocked:
@@ -952,7 +966,7 @@ class Game:
             counts = self.counts()
             score = {r: sum(VALUE['R'][v] * strength_parts(P, counts[v], 'P', 'P')[1] for v in vs)
                      for r, vs in REGIONS.items()}
-            self.jam_region = max(score, key=lambda r: (score[r], r == 'N'))
+            self.jam_region = P.get('jam_target') or max(score, key=lambda r: (score[r], r == 'N'))
             if t == P['jam_start']:
                 ev.append(f"Red jamming begins: Blue ISR halved in region {self.jam_region} until t={P['jam_end']}")
         # ---- 1. observations
@@ -966,6 +980,10 @@ class Game:
                 forced[s.owner][s.id] = fm
                 if fm != s.loc:
                     ev.append(f"{s.owner} {s.kind}#{s.id} forced return {s.loc}->{fm} (d={s.d})")
+        return t, ev, forced
+
+    def decide(self, t, forced):
+        """Step 2: each side's policy chooses moves and postures."""
         moves, post, obs_of = {}, {}, {}
         for i in 'BR':
             obs = obs_of[i] = Obs(self, i, t, forced[i])
@@ -975,6 +993,11 @@ class Game:
                 m, p = self._blockade_override(m, p, forced['R'])
             moves[i], post[i] = m, p
             self.last_war_risk[i] = war_risk(obs, m, p)     # what side i believes its plan risks (diagnostic)
+        return moves, post, obs_of
+
+    def end_period(self, t, ev, forced, moves, post, obs_of):
+        """Steps 3-8: moves resolve, control, incidents, payoffs, termination, beliefs."""
+        P, g, rng = self.P, self.g, self.rng
         # ---- 3. resolve moves under the movement budget F_i (forced moves charged first)
         for i in 'BR':
             budget = self.F[i]
@@ -2102,6 +2125,9 @@ def make_policy(name, player, game):
         return EquilibriumPolicy(player, rng)
     if name == 'maximin':
         return MaximinPolicy(player, rng)
+    if name == 'rollout':
+        import rollout                              # Workshop 2 lookahead by rollout (rollout.py)
+        return rollout.RolloutPolicy(player, game)
     if name.startswith('learn'):
         import learning                             # Workshop 2 learning policies (learning.py)
         return learning.make_learner(name, player, game)
