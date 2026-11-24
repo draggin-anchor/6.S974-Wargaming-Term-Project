@@ -118,5 +118,5 @@ tar czf ~/w2extra.tgz results_w2/attacks/*.csv results_w2/adapt/*.csv     # on E
 scp KERB@orcd-login.mit.edu:w2extra.tgz ~/Desktop/                         # on the Mac
 ```
 
-Sizes: attacks 13,720 games (400 rollout, 7,920 screen on 40 seeds, 5,400 results on 200 seeds),
+Sizes: attacks 14,120 games (400 rollout, 400 MIP-BR baseline, 7,920 screen on 40 seeds, 5,400 results on 200 seeds),
 adapt 2,000 games (7 Blue rules with the switch, 3 without, 200 seeds).

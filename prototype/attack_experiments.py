@@ -11,7 +11,8 @@ nominal baseline: they use the same seeds 0-199, so differences are paired.
 
 Blocks, in the order the workers play them:
   R  rollout lookahead.  Blue 'rollout' (rollout.py) against Red MIP-BR and against Red rule of
-     thumb, D0, nominal weather, seeds 0-199.  Compared with Blue MIP-BR on the same seeds.
+     thumb, D0, nominal weather, seeds 0-199.  Compared with Blue MIP-BR on the same seeds, replayed
+     on the same machine (and checked against the stored suite).
   S  attack screen.  Red picks the target that hurts Blue most: for each Blue setup and each attack,
      every target is played on 40 screening seeds (1000-1039), and the target with the lowest mean
      Blue payoff is Red's choice for that setup.  Screening seeds are not reused below, so the
@@ -55,6 +56,10 @@ TARGETS = {'jamming': ['default', 'N', 'C', 'S'], 'blockade': ['default'] + ZONE
 BLUE_POLICIES = ['moderate', 'greedy_br', 'mip_br', 'equilibrium', 'maximin', 'rollout']
 SETUPS = [(b, 'mip_br', 'D0') for b in BLUE_POLICIES] + [('mip_br', 'mip_br', d) for d in ('D1', 'D2', 'D3')]
 ROLLOUT = [('rollout', 'mip_br', 'D0'), ('rollout', 'moderate', 'D0')]
+# MIP-BR replayed on this machine: the rollout baseline, and a check that the stored suite (played on
+# Engaging in October) still reproduces.  A different Gurobi version can pick a different optimal plan
+# when there are ties, and the games then differ.
+BASELINE = [('mip_br', 'mip_br', 'D0'), ('mip_br', 'moderate', 'D0')]
 NAMES = {'moderate': 'Rule of thumb', 'greedy_br': 'Quick best response', 'mip_br': 'Best response (MIP)',
          'equilibrium': 'Nash equilibrium plan', 'maximin': 'Safety-first plan', 'rollout': 'Rollout lookahead'}
 
@@ -136,8 +141,9 @@ def final_list(store):
 
 def rollout_list():
     n = min(50, SEEDS)
-    first = [s + ('nominal', 'none', 'none', sd) for sd in range(n) for s in ROLLOUT]
-    return first + [s + ('nominal', 'none', 'none', sd) for sd in range(n, SEEDS) for s in ROLLOUT]
+    both = ROLLOUT + BASELINE
+    first = [s + ('nominal', 'none', 'none', sd) for sd in range(n) for s in both]
+    return first + [s + ('nominal', 'none', 'none', sd) for sd in range(n, SEEDS) for s in both]
 
 
 def game_list(store=None):
@@ -228,7 +234,7 @@ def tables():
     rows = []
     for blue, red, d in ROLLOUT:
         ro = _mine(store, (blue, red, d), 'none', 'none', range(SEEDS))
-        base = _suite(suite, 'mip_br', red, d)
+        base = _mine(store, ('mip_br', red, d), 'none', 'none', range(SEEDS))
         if len(ro) < 2:
             continue
         g, se, n = _paired(ro, base)
@@ -240,6 +246,13 @@ def tables():
                      f"{_ms([r['rollout_mip_share'] for r in ro.values()])[0]:.2f}"])
     out.append(E.md(rows, ['Opponent', 'games', 'u_B rollout', 'u_B MIP-BR', 'gain', 'war rollout', 'war MIP-BR',
                            'war difference', 'share of turns rollout kept the MIP-BR plan']))
+    # does the stored suite reproduce on this machine?
+    for b in BASELINE:
+        mine, st = _mine(store, b, 'none', 'none', range(SEEDS)), _suite(suite, *b)
+        same = [abs(mine[sd]['blue_payoff'] - st[sd]['blue_payoff']) < 1e-6 for sd in set(mine) & set(st)]
+        out.append(f"\nCheck: {NAMES[b[0]]} vs {NAMES[b[1]]} replayed here matches the stored suite in "
+                   f"{sum(same)} of {len(same)} games." + ("" if all(same) else
+                   "  NOT all match, so compare attack games with the replayed baseline, not the suite."))
     # attacks
     out.append("\n\nEvery Blue setup under attack, Red MIP-BR, nominal weather.  Red's target is the one with the lowest "
                f"Blue payoff on {len(SCREEN_SEEDS)} screening seeds.  Entry: target / u_B / change from no attack "
