@@ -521,7 +521,7 @@ class _BothMIPs(wg.MIPBRPolicy):
         same = all({k: c for k, c in co[v].items() if c} == {k: c for k, c in cn[v].items() if c}
                    and (po.get(v, 'P') == pn.get(v, 'P') or not any(co[v].values()))
                    for v in obs.graph.contested)
-        eps = wg.risk_budget(obs.P['eps'][self.player], obs.ell, obs.P)
+        eps = wg.risk_budget(obs.P['eps'][self.player], obs.esc, obs.P)
         _BothMIPs.log.append((self.player, same, Jo, Jn, ro, rn, eps))
         return mn, pn
 

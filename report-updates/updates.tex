@@ -123,7 +123,8 @@ assumptions (Table~\ref{tab:params}), not values derived from documented literat
 \section{Game formulation}
 %======================================================================
 \textbf{One period $t$ (timeline):} (1) Nature draws the sea state $w^t_r$ of each region (scenario $\omega$).
-(2) Each player observes its own ships, $\ell^t$, $c^t$, $w^t$, and detects opponent ships w.p.\ $q_{i,v}$. (3) Ships whose endurance is nearly spent are forced toward home\add{ or toward their side's oiler. Ships due for
+(2) Each player observes its own ships, $\ell^t$\add{ (or, when the level is hidden, last period's incident zones
+and its belief $b^t_i$, \S\ref{sec:hidden})}, $c^t$, $w^t$, and detects opponent ships w.p.\ $q_{i,v}$. (3) Ships whose endurance is nearly spent are forced toward home\add{ or toward their side's oiler. Ships due for
 maintenance or with an engineering casualty are forced home}. (4) Both players choose moves and postures
 \emph{simultaneously}. (5) Moves resolve under movement budgets, and endurance updates\add{. Maintenance clocks, engineering
 casualties and repairs update, and each oiler moves}. (6) Control indices update,
@@ -164,6 +165,7 @@ $\zeta_D$ & redesign cost per period & D1 0.3; D2 0.5; D3 0\\
 \add{$m_0$} & \add{share in maintenance at $t=1$} & \add{1/3}\\
 \add{$p_c$; $Z_c$} & \add{casualty chance per period at sea; repair periods} & \add{$1-0.99^2\approx0.02$; 5}\\
 \add{$D_o$} & \add{oiler endurance (periods)} & \add{15}\\
+\add{$\tau$} & \add{belief threshold, hidden level (\S\ref{sec:hidden})} & \add{0.25}\\
 \bottomrule
 \end{tabular}
 \end{minipage}
@@ -239,6 +241,8 @@ opponent's ships are now. Each period it detects the opponent at node $v$ with p
 (Table~\ref{tab:params}, for an own ship there, a ship next door or $v$ near a home port, or satellite only), seeing the count
 of each type and the posture. Its \emph{belief} $\hat x^t_{-i,v}$ is the last count it detected at $v$ (exact at
 the start, when all ships are in port), so moves are chosen at information sets that do not reveal where the opponent is now.
+\add{As an option, $\ell^t$ is hidden from both players too, and each keeps a belief over it built from the incidents
+it sees (\S\ref{sec:hidden}).}
 
 \textbf{Weather:} a random factor neither side controls. In each of four scenarios (not calendar seasons)
 $\omega\in\Omega=\{$calm, nominal, typhoon, extreme$\}$ with weights $\pi_\omega$, each period a region
@@ -368,6 +372,7 @@ a zone the opponent occupies. That risk cannot be avoided, and near war it can e
 penalized at 1000 per unit, lets the program exceed the cap by only that amount, so it always has a solution.
 
 \input{mipflow.tex}
+\input{hidden.tex}
 
 \subsection{The template game and the policies we compare}\label{sec:policies}
 \textbf{Template game:} the full game has far too many strategies to solve for an equilibrium directly, so we
@@ -404,7 +409,8 @@ hazards are halved, which helps Red as much as Blue. Costs $\zeta_D$ are in Tabl
 \textbf{Simplifying assumptions:} there are two unitary players, control is a force-ratio index, incidents are the
 only path to war, beliefs are last-seen counts, and best responses look one period ahead. \add{Oilers follow a fixed
 rule and cannot be targeted, maintenance takes place only at home ports, and engineering casualties are independent
-from ship to ship.}
+from ship to ship. When the level is hidden, policies act on the current belief one period ahead and do not plan to
+learn about the level.}
 
 %======================================================================
 \section{Preliminary results}
@@ -414,6 +420,7 @@ real ships, readiness, exact MIP, $s_h=0.12$). Workshop 1 values are shown in gr
 sums over 180 periods instead of 60, so they are larger in size than in Workshop 1.}
 
 \input{results.tex}
+\input{results_hidden.tex}
 
 %======================================================================
 \section{Prototype}
